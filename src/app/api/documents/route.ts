@@ -1,4 +1,3 @@
-import { NextResponse } from "next/server";
 import { eq, asc } from "drizzle-orm";
 import { createDb, documents } from "@/db";
 import { getD1Database } from "@/lib/cloudflare";
@@ -15,11 +14,11 @@ export async function GET() {
 			.from(documents)
 			.orderBy(asc(documents.order), asc(documents.createdAt));
 
-		return NextResponse.json({ documents: allDocuments });
+		return Response.json({ documents: allDocuments });
 	} catch (error) {
 		const message =
 			error instanceof Error ? error.message : "Failed to fetch documents";
-		return NextResponse.json({ error: message }, { status: 500 });
+		return Response.json({ error: message }, { status: 500 });
 	}
 }
 
@@ -35,7 +34,7 @@ export async function POST(request: Request) {
 		const { title, content, parentId } = (await request.json()) as CreateDocumentBody;
 
 		if (!title?.trim()) {
-			return NextResponse.json(
+			return Response.json(
 				{ error: "Title is required" },
 				{ status: 400 }
 			);
@@ -70,10 +69,10 @@ export async function POST(request: Request) {
 
 		await db.insert(documents).values(newDoc);
 
-		return NextResponse.json({ document: newDoc }, { status: 201 });
+		return Response.json({ document: newDoc }, { status: 201 });
 	} catch (error) {
 		const message =
 			error instanceof Error ? error.message : "Failed to create document";
-		return NextResponse.json({ error: message }, { status: 500 });
+		return Response.json({ error: message }, { status: 500 });
 	}
 }

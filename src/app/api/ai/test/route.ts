@@ -1,4 +1,3 @@
-import { NextResponse } from 'next/server';
 import { createDb, settings } from '@/db';
 import { getD1Database } from '@/lib/cloudflare';
 import { eq } from 'drizzle-orm';
@@ -54,7 +53,7 @@ export async function POST(request: Request) {
         }
 
         if (!apiKey || !model) {
-            return NextResponse.json({ error: '缺少必要参数' }, { status: 400 });
+            return Response.json({ error: '缺少必要参数' }, { status: 400 });
         }
 
         // 使用原生 fetch 调用 Gemini API
@@ -84,18 +83,18 @@ export async function POST(request: Request) {
 
         if (!response.ok) {
             const errorMessage = data.error?.message || '连接测试失败';
-            return NextResponse.json({ error: errorMessage }, { status: 500 });
+            return Response.json({ error: errorMessage }, { status: 500 });
         }
 
         const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
         if (text) {
-            return NextResponse.json({ success: true, message: '连接成功' });
+            return Response.json({ success: true, message: '连接成功' });
         } else {
-            return NextResponse.json({ error: '未收到有效响应' }, { status: 500 });
+            return Response.json({ error: '未收到有效响应' }, { status: 500 });
         }
     } catch (error) {
         console.error('AI test failed:', error);
         const message = error instanceof Error ? error.message : '连接测试失败';
-        return NextResponse.json({ error: message }, { status: 500 });
+        return Response.json({ error: message }, { status: 500 });
     }
 }

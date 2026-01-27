@@ -1,5 +1,4 @@
-import { NextResponse } from "next/server";
-import { desc, ne } from "drizzle-orm";
+import { desc } from "drizzle-orm";
 import { createDb, users } from "@/db";
 import { getD1Database } from "@/lib/cloudflare";
 import { requireAdmin } from "@/lib/session";
@@ -21,10 +20,10 @@ export async function GET() {
 			.from(users)
 			.orderBy(desc(users.createdAt));
 
-		return NextResponse.json({ users: allUsers });
+		return Response.json({ users: allUsers });
 	} catch (error) {
 		const message =
 			error instanceof Error ? error.message : "Failed to fetch users";
-		return NextResponse.json({ error: message }, { status: 403 });
+		return Response.json({ error: message }, { status: 403 });
 	}
 }

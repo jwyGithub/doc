@@ -1,4 +1,3 @@
-import { NextResponse } from "next/server";
 import { getD1Database } from "@/lib/cloudflare";
 import { createDb } from "@/db";
 import { documents, settings } from "@/db/schema";
@@ -33,10 +32,10 @@ export async function GET() {
 		// 取两者的最大值作为版本号
 		const version = Math.max(settingVersion, latestUpdate);
 
-		return NextResponse.json({ version });
+		return Response.json({ version });
 	} catch (error) {
 		console.error("Failed to get document version:", error);
 		// 出错时返回当前时间戳，强制客户端刷新
-		return NextResponse.json({ version: Date.now() });
+		return Response.json({ version: Date.now() });
 	}
 }

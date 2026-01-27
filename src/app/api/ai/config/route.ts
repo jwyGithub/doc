@@ -1,4 +1,3 @@
-import { NextResponse } from 'next/server';
 import { createDb, settings } from '@/db';
 import { getD1Database } from '@/lib/cloudflare';
 import { eq } from 'drizzle-orm';
@@ -26,7 +25,7 @@ export async function GET() {
         if (result) {
             const config = JSON.parse(result.value) as AIConfigData;
             // 不返回完整的 apiKey，只返回部分用于显示
-            return NextResponse.json({
+            return Response.json({
                 apiKey: config.apiKey ? `${config.apiKey.slice(0, 8)}...` : '',
                 apiKeyConfigured: !!config.apiKey,
                 model: config.model,
@@ -34,7 +33,7 @@ export async function GET() {
             });
         }
 
-        return NextResponse.json({
+        return Response.json({
             apiKey: '',
             apiKeyConfigured: false,
             model: '',
@@ -42,7 +41,7 @@ export async function GET() {
         });
     } catch (error) {
         console.error('Failed to get AI config:', error);
-        return NextResponse.json({ error: '获取配置失败' }, { status: 500 });
+        return Response.json({ error: '获取配置失败' }, { status: 500 });
     }
 }
 
@@ -94,9 +93,9 @@ export async function POST(request: Request) {
             });
         }
 
-        return NextResponse.json({ success: true });
+        return Response.json({ success: true });
     } catch (error) {
         console.error('Failed to save AI config:', error);
-        return NextResponse.json({ error: '保存配置失败' }, { status: 500 });
+        return Response.json({ error: '保存配置失败' }, { status: 500 });
     }
 }

@@ -1,4 +1,3 @@
-import { NextResponse } from "next/server";
 import { getD1Database } from "@/lib/cloudflare";
 import { createDb } from "@/db";
 import { users } from "@/db/schema";
@@ -20,14 +19,14 @@ export async function GET() {
 			),
 		});
 
-		return NextResponse.json({
+		return Response.json({
 			initialized: !!adminUser,
 			message: adminUser ? "系统已初始化" : "系统未初始化，请创建超级管理员",
 		});
 	} catch (error) {
 		console.error("Failed to check setup status:", error);
 		// 数据库可能还没创建，返回未初始化状态
-		return NextResponse.json({
+		return Response.json({
 			initialized: false,
 			message: "系统未初始化",
 		});

@@ -1,4 +1,3 @@
-import { NextResponse } from 'next/server';
 import { createDb, settings } from '@/db';
 import { getD1Database } from '@/lib/cloudflare';
 import { eq } from 'drizzle-orm';
@@ -46,7 +45,7 @@ export async function POST(request: Request) {
         }
 
         if (!apiKey) {
-            return NextResponse.json({ error: '缺少 API Key' }, { status: 400 });
+            return Response.json({ error: '缺少 API Key' }, { status: 400 });
         }
 
         // 调用 Google Generative AI 模型列表 API
@@ -60,7 +59,7 @@ export async function POST(request: Request) {
         if (!response.ok) {
             const errorText = await response.text();
             console.error('Failed to fetch models:', errorText);
-            return NextResponse.json({ error: '获取模型列表失败，请检查 API Key 是否正确' }, { status: response.status });
+            return Response.json({ error: '获取模型列表失败，请检查 API Key 是否正确' }, { status: response.status });
         }
 
         const data = (await response.json()) as ModelsResponse;
@@ -78,11 +77,11 @@ export async function POST(request: Request) {
                 description: model.description || ''
             }));
 
-        return NextResponse.json({ models: generativeModels });
+        return Response.json({ models: generativeModels });
     } catch (error) {
         console.error('Failed to list models:', error);
         const message = error instanceof Error ? error.message : '获取模型列表失败';
-        return NextResponse.json({ error: message }, { status: 500 });
+        return Response.json({ error: message }, { status: 500 });
     }
 }
 

@@ -1,4 +1,3 @@
-import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { createDb, users, sessions, accounts, documents } from "@/db";
 import { getD1Database } from "@/lib/cloudflare";
@@ -27,14 +26,14 @@ export async function GET(
 			.limit(1);
 
 		if (!user) {
-			return NextResponse.json({ error: "User not found" }, { status: 404 });
+			return Response.json({ error: "User not found" }, { status: 404 });
 		}
 
-		return NextResponse.json({ user });
+		return Response.json({ user });
 	} catch (error) {
 		const message =
 			error instanceof Error ? error.message : "Failed to fetch user";
-		return NextResponse.json({ error: message }, { status: 403 });
+		return Response.json({ error: message }, { status: 403 });
 	}
 }
 
@@ -62,7 +61,7 @@ export async function PUT(
 			.limit(1);
 
 		if (!targetUser) {
-			return NextResponse.json({ error: "User not found" }, { status: 404 });
+			return Response.json({ error: "User not found" }, { status: 404 });
 		}
 
 		// 不能修改超级管理员的角色（除非自己是超级管理员）
@@ -70,7 +69,7 @@ export async function PUT(
 			targetUser.role === "superadmin" &&
 			currentUser.role !== "superadmin"
 		) {
-			return NextResponse.json(
+			return Response.json(
 				{ error: "Cannot modify super admin" },
 				{ status: 403 }
 			);
@@ -78,7 +77,7 @@ export async function PUT(
 
 		// 只有超级管理员才能设置管理员角色
 		if (role === "admin" && currentUser.role !== "superadmin") {
-			return NextResponse.json(
+			return Response.json(
 				{ error: "Only super admin can set admin role" },
 				{ status: 403 }
 			);
@@ -86,7 +85,7 @@ export async function PUT(
 
 		// 不能将自己降级
 		if (currentUser.id === id && role && role !== currentUser.role) {
-			return NextResponse.json(
+			return Response.json(
 				{ error: "Cannot change your own role" },
 				{ status: 403 }
 			);
@@ -115,11 +114,11 @@ export async function PUT(
 			.where(eq(users.id, id))
 			.limit(1);
 
-		return NextResponse.json({ user: updated });
+		return Response.json({ user: updated });
 	} catch (error) {
 		const message =
 			error instanceof Error ? error.message : "Failed to update user";
-		return NextResponse.json({ error: message }, { status: 403 });
+		return Response.json({ error: message }, { status: 403 });
 	}
 }
 
@@ -132,7 +131,7 @@ export async function DELETE(
 		const { id } = await params;
 
 		if (currentUser.id === id) {
-			return NextResponse.json(
+			return Response.json(
 				{ error: "Cannot delete yourself" },
 				{ status: 403 }
 			);
@@ -148,12 +147,12 @@ export async function DELETE(
 			.limit(1);
 
 		if (!targetUser) {
-			return NextResponse.json({ error: "User not found" }, { status: 404 });
+			return Response.json({ error: "User not found" }, { status: 404 });
 		}
 
 		// 不能删除超级管理员
 		if (targetUser.role === "superadmin") {
-			return NextResponse.json(
+			return Response.json(
 				{ error: "Cannot delete super admin" },
 				{ status: 403 }
 			);
@@ -161,7 +160,7 @@ export async function DELETE(
 
 		// 只有超级管理员能删除管理员
 		if (targetUser.role === "admin" && currentUser.role !== "superadmin") {
-			return NextResponse.json(
+			return Response.json(
 				{ error: "Only super admin can delete admin" },
 				{ status: 403 }
 			);
@@ -173,10 +172,10 @@ export async function DELETE(
 		await db.delete(documents).where(eq(documents.authorId, id));
 		await db.delete(users).where(eq(users.id, id));
 
-		return NextResponse.json({ success: true });
+		return Response.json({ success: true });
 	} catch (error) {
 		const message =
 			error instanceof Error ? error.message : "Failed to delete user";
-		return NextResponse.json({ error: message }, { status: 403 });
+		return Response.json({ error: message }, { status: 403 });
 	}
 }

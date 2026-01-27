@@ -1,4 +1,3 @@
-import { NextResponse } from "next/server";
 import { getD1Database } from "@/lib/cloudflare";
 import { createDb } from "@/db";
 import { users, settings } from "@/db/schema";
@@ -28,7 +27,7 @@ export async function POST(request: Request) {
 		});
 
 		if (existingAdmin) {
-			return NextResponse.json(
+			return Response.json(
 				{ error: "系统已初始化，无法重复创建超级管理员" },
 				{ status: 400 }
 			);
@@ -39,7 +38,7 @@ export async function POST(request: Request) {
 
 		// 验证输入
 		if (!email || !password || !name) {
-			return NextResponse.json(
+			return Response.json(
 				{ error: "请填写完整信息" },
 				{ status: 400 }
 			);
@@ -48,7 +47,7 @@ export async function POST(request: Request) {
 		// 验证邮箱格式
 		const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 		if (!emailRegex.test(email)) {
-			return NextResponse.json(
+			return Response.json(
 				{ error: "邮箱格式不正确" },
 				{ status: 400 }
 			);
@@ -56,7 +55,7 @@ export async function POST(request: Request) {
 
 		// 验证密码长度
 		if (password.length < 8) {
-			return NextResponse.json(
+			return Response.json(
 				{ error: "密码长度至少为8位" },
 				{ status: 400 }
 			);
@@ -73,7 +72,7 @@ export async function POST(request: Request) {
 		});
 
 		if (!result || !result.user) {
-			return NextResponse.json(
+			return Response.json(
 				{ error: "创建用户失败" },
 				{ status: 500 }
 			);
@@ -98,7 +97,7 @@ export async function POST(request: Request) {
 			});
 		}
 
-		return NextResponse.json({
+		return Response.json({
 			success: true,
 			message: "系统初始化成功",
 			user: {
@@ -110,6 +109,6 @@ export async function POST(request: Request) {
 	} catch (error) {
 		console.error("Setup failed:", error);
 		const message = error instanceof Error ? error.message : "系统初始化失败";
-		return NextResponse.json({ error: message }, { status: 500 });
+		return Response.json({ error: message }, { status: 500 });
 	}
 }

@@ -1,4 +1,3 @@
-import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { createDb, documents } from "@/db";
 import { getD1Database } from "@/lib/cloudflare";
@@ -21,17 +20,17 @@ export async function GET(
 			.limit(1);
 
 		if (!doc) {
-			return NextResponse.json(
+			return Response.json(
 				{ error: "Document not found" },
 				{ status: 404 }
 			);
 		}
 
-		return NextResponse.json({ document: doc });
+		return Response.json({ document: doc });
 	} catch (error) {
 		const message =
 			error instanceof Error ? error.message : "Failed to fetch document";
-		return NextResponse.json({ error: message }, { status: 500 });
+		return Response.json({ error: message }, { status: 500 });
 	}
 }
 
@@ -61,7 +60,7 @@ export async function PUT(
 			.limit(1);
 
 		if (!existing) {
-			return NextResponse.json(
+			return Response.json(
 				{ error: "Document not found" },
 				{ status: 404 }
 			);
@@ -84,11 +83,11 @@ export async function PUT(
 			.where(eq(documents.id, id))
 			.limit(1);
 
-		return NextResponse.json({ document: updated });
+		return Response.json({ document: updated });
 	} catch (error) {
 		const message =
 			error instanceof Error ? error.message : "Failed to update document";
-		return NextResponse.json({ error: message }, { status: 500 });
+		return Response.json({ error: message }, { status: 500 });
 	}
 }
 
@@ -109,7 +108,7 @@ export async function DELETE(
 			.limit(1);
 
 		if (!existing) {
-			return NextResponse.json(
+			return Response.json(
 				{ error: "Document not found" },
 				{ status: 404 }
 			);
@@ -131,10 +130,10 @@ export async function DELETE(
 
 		await deleteRecursive(id);
 
-		return NextResponse.json({ success: true });
+		return Response.json({ success: true });
 	} catch (error) {
 		const message =
 			error instanceof Error ? error.message : "Failed to delete document";
-		return NextResponse.json({ error: message }, { status: 500 });
+		return Response.json({ error: message }, { status: 500 });
 	}
 }

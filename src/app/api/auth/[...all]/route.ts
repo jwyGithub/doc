@@ -1,19 +1,16 @@
 import { createAuth } from "@/lib/auth";
 import { getD1Database } from "@/lib/cloudflare";
-import { toNextJsHandler } from "better-auth/next-js";
 
-async function getHandler() {
+async function handleAuth(request: Request) {
 	const db = await getD1Database();
 	const auth = createAuth(db);
-	return toNextJsHandler(auth);
+	return auth.handler(request);
 }
 
 export async function GET(request: Request) {
-	const handler = await getHandler();
-	return handler.GET(request);
+	return handleAuth(request);
 }
 
 export async function POST(request: Request) {
-	const handler = await getHandler();
-	return handler.POST(request);
+	return handleAuth(request);
 }
