@@ -11,7 +11,7 @@
 - **数据库**: Cloudflare D1 (SQLite)
 - **ORM**: Drizzle ORM
 - **认证**: Better Auth
-- **AI**: Google Gemini AI (via AI SDK)
+- **AI**: Google Gemini AI (原生 API)
 - **Markdown**: React Markdown + Remark GFM + Rehype Highlight
 - **部署**: Cloudflare Workers (via OpenNext)
 

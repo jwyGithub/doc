@@ -1,11 +1,10 @@
 import { NextResponse } from 'next/server';
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { generateText } from 'ai';
 import { createDb, settings } from '@/db';
 import { getD1Database } from '@/lib/cloudflare';
 import { eq } from 'drizzle-orm';
 
 const AI_CONFIG_KEY = 'ai_config';
+const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 
 interface AIConfigData {
     apiKey: string;
@@ -16,6 +15,19 @@ interface AIConfigData {
 interface TestRequestBody {
     apiKey?: string;
     model: string;
+}
+
+interface GeminiResponse {
+    candidates?: Array<{
+        content?: {
+            parts?: Array<{
+                text?: string;
+            }>;
+        };
+    }>;
+    error?: {
+        message?: string;
+    };
 }
 
 export async function POST(request: Request) {
@@ -45,18 +57,38 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: '缺少必要参数' }, { status: 400 });
         }
 
-        // 创建 Google Generative AI 客户端
-        const google = createGoogleGenerativeAI({
-            apiKey: apiKey
+        // 使用原生 fetch 调用 Gemini API
+        const response = await fetch(`${GEMINI_API_BASE}/${model}:generateContent?key=${apiKey}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                contents: [
+                    {
+                        role: 'user',
+                        parts: [
+                            {
+                                text: "Hi, just testing the connection. Reply with 'OK' only."
+                            }
+                        ]
+                    }
+                ],
+                generationConfig: {
+                    maxOutputTokens: 10
+                }
+            })
         });
 
-        // 发送测试请求
-        const result = await generateText({
-            model: google(model),
-            prompt: "Hi, just testing the connection. Reply with 'OK' only."
-        });
+        const data = (await response.json()) as GeminiResponse;
 
-        if (result.text) {
+        if (!response.ok) {
+            const errorMessage = data.error?.message || '连接测试失败';
+            return NextResponse.json({ error: errorMessage }, { status: 500 });
+        }
+
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text) {
             return NextResponse.json({ success: true, message: '连接成功' });
         } else {
             return NextResponse.json({ error: '未收到有效响应' }, { status: 500 });
