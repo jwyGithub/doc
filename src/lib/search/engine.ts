@@ -157,6 +157,36 @@ export async function initSearchEngine(): Promise<void> {
 }
 
 /**
+ * 检查文本是否包含搜索词（支持部分匹配）
+ */
+function containsSearchTerm(text: string, searchQuery: string): boolean {
+	if (!text || !searchQuery) return false;
+	const lowerText = text.toLowerCase();
+	const lowerQuery = searchQuery.toLowerCase().trim();
+	
+	// 直接包含整个搜索词
+	if (lowerText.includes(lowerQuery)) {
+		return true;
+	}
+	
+	// 对于中文搜索，检查是否包含搜索词的大部分字符（至少 60%）
+	if (/[\u4e00-\u9fa5]/.test(lowerQuery)) {
+		let matchCount = 0;
+		for (const char of lowerQuery) {
+			if (lowerText.includes(char)) {
+				matchCount++;
+			}
+		}
+		// 至少匹配 60% 的字符
+		if (matchCount / lowerQuery.length >= 0.6) {
+			return true;
+		}
+	}
+	
+	return false;
+}
+
+/**
  * 执行搜索
  */
 export async function search(query: string): Promise<SearchResultItem[]> {
@@ -177,13 +207,20 @@ export async function search(query: string): Promise<SearchResultItem[]> {
 		boost: { title: 2 },
 	});
 
-	return results.map((result) => ({
+	// 后过滤：确保结果确实包含搜索词
+	const filteredResults = results.filter((result) => {
+		const title = result.title as string || "";
+		const content = result.content as string || "";
+		return containsSearchTerm(title, query) || containsSearchTerm(content, query);
+	});
+
+	return filteredResults.map((result) => ({
 		id: result.id as string,
 		title: result.title as string,
 		content: result.content as string,
 		score: result.score,
-		titleMatch: result.match?.title !== undefined,
-		contentMatch: result.match?.content !== undefined,
+		titleMatch: containsSearchTerm(result.title as string || "", query),
+		contentMatch: containsSearchTerm(result.content as string || "", query),
 		matchedTerms: result.terms || [],
 	}));
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, lazy, Suspense } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,11 +16,13 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ArrowLeft, Save, Loader2, Eye, Edit, Sparkles } from "lucide-react";
 import { toast } from "sonner";
-import { MarkdownRenderer } from "@/components/markdown-renderer";
-import { AIBeautifyDialog } from "@/components/ai-beautify-dialog";
 import { triggerDocumentsRefresh } from "@/hooks/use-documents";
 import { onDocumentUpdated } from "@/lib/search";
 import type { Document } from "@/db/schema";
+
+// 延迟加载重型组件
+const MarkdownRenderer = lazy(() => import("@/components/markdown-renderer").then(mod => ({ default: mod.MarkdownRenderer })));
+const AIBeautifyDialog = lazy(() => import("@/components/ai-beautify-dialog").then(mod => ({ default: mod.AIBeautifyDialog })));
 
 export default function EditDocumentPage() {
 	const router = useRouter();
@@ -224,7 +226,9 @@ export default function EditDocumentPage() {
 						<ScrollArea className="flex-1 min-h-0">
 							<div className="p-4">
 								{content ? (
-									<MarkdownRenderer content={content} />
+									<Suspense fallback={<div className="text-muted-foreground text-center py-8">加载中...</div>}>
+										<MarkdownRenderer content={content} />
+									</Suspense>
 								) : (
 									<p className="text-muted-foreground text-center py-8">
 										在左侧输入内容后，这里将实时显示预览
@@ -236,12 +240,16 @@ export default function EditDocumentPage() {
 				</div>
 			</div>
 
-			<AIBeautifyDialog
-				open={showAIBeautify}
-				onOpenChange={setShowAIBeautify}
-				content={content}
-				onReplace={setContent}
-			/>
+			{showAIBeautify && (
+				<Suspense fallback={null}>
+					<AIBeautifyDialog
+						open={showAIBeautify}
+						onOpenChange={setShowAIBeautify}
+						content={content}
+						onReplace={setContent}
+					/>
+				</Suspense>
+			)}
 		</div>
 	);
 }

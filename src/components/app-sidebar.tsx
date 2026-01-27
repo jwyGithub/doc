@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -38,10 +38,11 @@ import { signOut } from "@/lib/auth-client";
 import type { User } from "@/db/schema";
 import { DocumentTree } from "./document-tree";
 import { ThemeToggle } from "./theme-toggle";
-import { SearchButton } from "./search-button";
-import { AIConfigDialog } from "./ai-config-dialog";
 import { UsersDialog } from "./users-dialog";
 import { SettingsDialog } from "./settings-dialog";
+
+// 延迟加载 AI 配置对话框
+const AIConfigDialog = lazy(() => import("./ai-config-dialog").then(mod => ({ default: mod.AIConfigDialog })));
 
 interface AppSidebarProps {
 	user: User;
@@ -86,12 +87,6 @@ export function AppSidebar({ user }: AppSidebarProps) {
 			</SidebarHeader>
 
 			<SidebarContent>
-				<SidebarGroup>
-					<SidebarGroupContent className="px-2">
-						<SearchButton />
-					</SidebarGroupContent>
-				</SidebarGroup>
-
 				<SidebarGroup>
 					<SidebarGroupLabel className="flex items-center justify-between">
 						<span className="flex items-center gap-2">
@@ -168,7 +163,11 @@ export function AppSidebar({ user }: AppSidebarProps) {
 				</SidebarMenu>
 			</SidebarFooter>
 
-			<AIConfigDialog open={showAIConfig} onOpenChange={setShowAIConfig} />
+			{showAIConfig && (
+				<Suspense fallback={null}>
+					<AIConfigDialog open={showAIConfig} onOpenChange={setShowAIConfig} />
+				</Suspense>
+			)}
 			<UsersDialog open={showUsers} onOpenChange={setShowUsers} />
 			<SettingsDialog open={showSettings} onOpenChange={setShowSettings} />
 		</Sidebar>

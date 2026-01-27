@@ -7,10 +7,12 @@ import { DocumentViewer } from "@/components/document-viewer";
 
 interface Props {
 	params: Promise<{ id: string }>;
+	searchParams: Promise<{ highlight?: string }>;
 }
 
-export default async function DocumentPage({ params }: Props) {
+export default async function DocumentPage({ params, searchParams }: Props) {
 	const { id } = await params;
+	const { highlight } = await searchParams;
 	
 	try {
 		await requireAuth();
@@ -27,7 +29,7 @@ export default async function DocumentPage({ params }: Props) {
 			notFound();
 		}
 
-		return <DocumentViewer document={document} />;
+		return <DocumentViewer document={document} highlight={highlight} />;
 	} catch {
 		notFound();
 	}

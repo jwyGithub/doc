@@ -19,23 +19,7 @@ import {
 	onSearchIndexUpdate,
 	type SearchResultItem,
 } from "@/lib/search";
-
-// 防抖 hook
-function useDebounce<T>(value: T, delay: number): T {
-	const [debouncedValue, setDebouncedValue] = useState<T>(value);
-
-	useEffect(() => {
-		const timer = setTimeout(() => {
-			setDebouncedValue(value);
-		}, delay);
-
-		return () => {
-			clearTimeout(timer);
-		};
-	}, [value, delay]);
-
-	return debouncedValue;
-}
+import { useDebounce } from "@/hooks/use-debounce";
 
 export function SearchCommand() {
 	const router = useRouter();
@@ -134,11 +118,17 @@ export function SearchCommand() {
 	// 选择文档
 	const handleSelect = useCallback(
 		(docId: string) => {
+			const searchQuery = query.trim();
 			setOpen(false);
 			setQuery("");
-			router.push(`/documents/${docId}`);
+			// 传递搜索关键词用于高亮和定位
+			if (searchQuery) {
+				router.push(`/documents/${docId}?highlight=${encodeURIComponent(searchQuery)}`);
+			} else {
+				router.push(`/documents/${docId}`);
+			}
 		},
-		[router]
+		[router, query]
 	);
 
 	// 高亮匹配的文本

@@ -1,13 +1,15 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect, lazy, Suspense } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2, Sparkles, Copy, Check, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
-import { MarkdownRenderer } from './markdown-renderer';
-import { type SSEOutput, XStream } from '@janone/xstream';
+import { XStream } from '@janone/xstream';
+
+// 延迟加载 Markdown 渲染器
+const MarkdownRenderer = lazy(() => import('./markdown-renderer').then(mod => ({ default: mod.MarkdownRenderer })));
 
 interface AIBeautifyDialogProps {
     open: boolean;
@@ -20,12 +22,32 @@ export function AIBeautifyDialog({ open, onOpenChange, content, onReplace }: AIB
     const [beautifiedContent, setBeautifiedContent] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [copied, setCopied] = useState(false);
+    const scrollEndRef = useRef<HTMLDivElement>(null);
+    const abortControllerRef = useRef<AbortController | null>(null);
+    const lastScrollTime = useRef(0);
+
+    // 流式渲染时自动滚动到底部（节流优化）
+    useEffect(() => {
+        if (isLoading && beautifiedContent && scrollEndRef.current) {
+            const now = Date.now();
+            // 每 200ms 最多滚动一次
+            if (now - lastScrollTime.current > 200) {
+                lastScrollTime.current = now;
+                scrollEndRef.current.scrollIntoView({ behavior: 'smooth' });
+            }
+        }
+    }, [beautifiedContent, isLoading]);
 
     const handleBeautify = useCallback(async () => {
         if (!content.trim()) {
             toast.error('文档内容为空，无法美化');
             return;
         }
+
+        // 如果有正在进行的请求，先中断
+        abortControllerRef.current?.abort();
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
 
         setIsLoading(true);
         setBeautifiedContent('');
@@ -34,7 +56,8 @@ export function AIBeautifyDialog({ open, onOpenChange, content, onReplace }: AIB
             const response = await fetch('/api/ai/beautify', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ content })
+                body: JSON.stringify({ content }),
+                signal: controller.signal
             });
 
             if (!response.ok) {
@@ -43,35 +66,46 @@ export function AIBeautifyDialog({ open, onOpenChange, content, onReplace }: AIB
             }
 
             let accumulated = '';
-            const stream = XStream<SSEOutput>({
-                readableStream: response.body!
-            });
+            const stream = XStream<string>(
+                {
+                    readableStream: response.body!,
+                    transformStream: new TransformStream({
+                        transform(chunk, controller) {
+                            controller.enqueue(chunk);
+                        }
+                    })
+                },
+                controller.signal
+            );
 
+            // 使用 requestAnimationFrame 批量更新，减少渲染次数
+            let pendingUpdate = false;
             for await (const item of stream) {
-                const data = item.data;
-                if (!data) {
-                    continue;
-                }
-                try {
-                    const content = JSON.parse(data)?.choices?.[0]?.delta?.content;
-                    if (content) {
-                        accumulated += content;
-                    }
-                } catch (error) {
-                    continue;
+                accumulated += item;
+                if (!pendingUpdate) {
+                    pendingUpdate = true;
+                    requestAnimationFrame(() => {
+                        setBeautifiedContent(accumulated);
+                        pendingUpdate = false;
+                    });
                 }
             }
+            // 确保最后的内容被渲染
+            setBeautifiedContent(accumulated);
 
             if (!accumulated) {
                 toast.error('未收到美化结果');
-            } else {
-                setBeautifiedContent(accumulated);
             }
         } catch (error) {
+            // 忽略用户主动中断的错误
+            if (error instanceof Error && error.name === 'AbortError') {
+                return;
+            }
             const message = error instanceof Error ? error.message : '美化失败';
             toast.error(message);
         } finally {
             setIsLoading(false);
+            abortControllerRef.current = null;
         }
     }, [content]);
 
@@ -93,6 +127,10 @@ export function AIBeautifyDialog({ open, onOpenChange, content, onReplace }: AIB
     };
 
     const handleClose = () => {
+        // 中断正在进行的请求和流传输
+        abortControllerRef.current?.abort();
+        abortControllerRef.current = null;
+        setIsLoading(false);
         setBeautifiedContent('');
         onOpenChange(false);
     };
@@ -127,7 +165,16 @@ export function AIBeautifyDialog({ open, onOpenChange, content, onReplace }: AIB
                     {beautifiedContent && (
                         <ScrollArea className='flex-1 border rounded-md overflow-auto'>
                             <div className='p-4'>
-                                <MarkdownRenderer content={beautifiedContent} />
+                                <Suspense fallback={<div className='text-muted-foreground text-center py-4'><Loader2 className='h-6 w-6 animate-spin mx-auto' /></div>}>
+                                    <MarkdownRenderer content={beautifiedContent} />
+                                </Suspense>
+                                {isLoading && (
+                                    <div className='flex items-center gap-2 mt-4 text-muted-foreground'>
+                                        <Loader2 className='h-4 w-4 animate-spin' />
+                                        <span className='text-sm'>正在生成...</span>
+                                    </div>
+                                )}
+                                <div ref={scrollEndRef} />
                             </div>
                         </ScrollArea>
                     )}

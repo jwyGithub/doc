@@ -1,9 +1,9 @@
 import { createDb, settings } from '@/db';
 import { getD1Database } from '@/lib/cloudflare';
 import { eq } from 'drizzle-orm';
-
-const AI_CONFIG_KEY = 'ai_config';
-const GEMINI_API_BASE = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
+import { createOpenAI } from '@ai-sdk/openai';
+import { streamText } from 'ai';
+import { AI_BASE_URL, AI_CONFIG_KEY } from '@/constants';
 
 interface AIConfigData {
     apiKey: string;
@@ -48,44 +48,39 @@ export async function POST(request: Request) {
             });
         }
 
-        // 使用原生 fetch 调用 Gemini API（流式）
-        const response = await fetch(GEMINI_API_BASE, {
-            method: 'POST',
+        const openaiProvider = createOpenAI({
+            apiKey: config.apiKey,
+            baseURL: AI_BASE_URL,
             headers: {
                 'Content-Type': 'application/json',
                 Authorization: `Bearer ${config.apiKey}`
-            },
-            body: JSON.stringify({
-                model: config.model,
-                messages: [
-                    {
-                        role: 'user',
-                        content: content
-                    },
-                    {
-                        role: 'assistant',
-                        content: config.systemPrompt
-                    }
-                ],
-                stream: true,
-                thinking: {
-                    type: 'disabled'
-                },
-                max_tokens: 65536,
-                temperature: 1.0
-            })
+            }
         });
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('AI API error:', errorText);
-            return new Response(JSON.stringify({ error: 'AI 服务请求失败' }), {
-                status: 500,
-                headers: { 'Content-Type': 'application/json' }
-            });
-        }
-
-        return new Response(response.body, {
+        const result = streamText({
+            model: openaiProvider.chat(config.model),
+            messages: [
+                {
+                    role: 'system',
+                    content: config.systemPrompt
+                },
+                {
+                    role: 'user',
+                    content: content
+                }
+            ],
+            providerOptions: {
+                openai: {
+                    stream: true,
+                    thinking: {
+                        type: 'disabled'
+                    },
+                    max_tokens: 65536,
+                    temperature: 1.0
+                }
+            }
+        });
+        return result.toTextStreamResponse({
             headers: {
                 'Content-Type': 'text/event-stream',
                 'Cache-Control': 'no-cache',

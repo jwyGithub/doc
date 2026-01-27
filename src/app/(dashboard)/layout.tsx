@@ -30,7 +30,7 @@ export default async function DashboardLayout({
 			<SidebarInset className="flex flex-col h-screen max-h-screen overflow-hidden">
 				{children}
 			</SidebarInset>
-			<Toaster position="top-right" />
+			<Toaster position="bottom-right" />
 			<SearchCommand />
 		</SidebarProvider>
 	);

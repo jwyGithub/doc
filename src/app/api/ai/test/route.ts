@@ -1,9 +1,9 @@
 import { createDb, settings } from '@/db';
 import { getD1Database } from '@/lib/cloudflare';
 import { eq } from 'drizzle-orm';
-
-const AI_CONFIG_KEY = 'ai_config';
-const GEMINI_API_BASE = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
+import { createOpenAI } from '@ai-sdk/openai';
+import { generateText } from 'ai';
+import { AI_BASE_URL, AI_CONFIG_KEY } from '@/constants';
 
 interface AIConfigData {
     apiKey: string;
@@ -52,32 +52,26 @@ export async function POST(request: Request) {
             return Response.json({ error: '缺少必要参数' }, { status: 400 });
         }
 
-        // 使用原生 fetch 调用 Gemini API
-        const response = await fetch(GEMINI_API_BASE, {
-            method: 'POST',
+        const openaiProvider = createOpenAI({
+            apiKey: apiKey,
+            baseURL: AI_BASE_URL,
             headers: {
                 'Content-Type': 'application/json',
                 Authorization: `Bearer ${apiKey}`
-            },
-            body: JSON.stringify({
-                model: model,
-                messages: [
-                    {
-                        role: 'user',
-                        content: 'Hi, just testing the connection. Reply with "OK" only.'
-                    }
-                ]
-            })
+            }
         });
 
-        const data = (await response.json()) as GeminiResponse;
+        const result = await generateText({
+            model: openaiProvider.chat(model),
+            messages: [
+                {
+                    role: 'user',
+                    content: 'Hi, just testing the connection. Reply with "OK" only.'
+                }
+            ]
+        });
 
-        if (!response.ok) {
-            const errorMessage = data.error?.message || '连接测试失败';
-            return Response.json({ error: errorMessage }, { status: 500 });
-        }
-
-        if (data) {
+        if (result) {
             return Response.json({ success: true, message: '连接成功' });
         } else {
             return Response.json({ error: '未收到有效响应' }, { status: 500 });

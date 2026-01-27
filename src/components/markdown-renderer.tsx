@@ -46,20 +46,44 @@ export function MarkdownRenderer({ content, className }: MarkdownRendererProps) 
 			className={cn(
 				"prose prose-neutral dark:prose-invert max-w-none",
 				"prose-headings:scroll-mt-20",
-				"prose-h1:text-3xl prose-h1:font-bold prose-h1:border-b prose-h1:pb-2",
+				// 标题样式 - 暗色模式使用渐变色
+				"prose-h1:text-3xl prose-h1:font-bold prose-h1:border-b prose-h1:pb-2 prose-h1:border-border",
+				"dark:prose-h1:text-transparent dark:prose-h1:bg-clip-text dark:prose-h1:bg-gradient-to-r dark:prose-h1:from-blue-400 dark:prose-h1:to-purple-400",
 				"prose-h2:text-2xl prose-h2:font-semibold prose-h2:mt-8",
+				"dark:prose-h2:text-blue-300",
 				"prose-h3:text-xl prose-h3:font-semibold",
-				"prose-p:leading-7",
+				"dark:prose-h3:text-purple-300",
+				"prose-h4:text-lg prose-h4:font-medium",
+				"dark:prose-h4:text-cyan-300",
+				// 段落样式
+				"prose-p:leading-7 dark:prose-p:text-gray-300",
+				// 链接样式
 				"prose-a:text-primary prose-a:no-underline hover:prose-a:underline",
+				"dark:prose-a:text-blue-400 dark:hover:prose-a:text-blue-300",
+				// 代码样式
 				"prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:bg-muted prose-code:text-sm prose-code:font-mono",
+				"dark:prose-code:bg-slate-800 dark:prose-code:text-pink-400",
 				"prose-pre:bg-[#0d1117] prose-pre:rounded-lg prose-pre:overflow-x-auto",
-				"prose-pre:p-4 prose-pre:text-sm",
+				"prose-pre:p-4 prose-pre:text-sm prose-pre:border prose-pre:border-border",
+				// 图片样式
 				"prose-img:rounded-lg prose-img:shadow-md",
+				// 引用样式
 				"prose-blockquote:border-l-4 prose-blockquote:border-primary prose-blockquote:bg-muted/50 prose-blockquote:py-1 prose-blockquote:px-4",
+				"dark:prose-blockquote:border-blue-500 dark:prose-blockquote:bg-blue-950/30",
+				// 列表样式
 				"prose-ul:list-disc prose-ol:list-decimal",
+				"dark:prose-li:text-gray-300 dark:marker:prose-li:text-blue-400",
+				// 表格样式
 				"prose-table:border-collapse prose-table:w-full",
 				"prose-th:border prose-th:border-border prose-th:bg-muted prose-th:p-2 prose-th:text-left",
+				"dark:prose-th:bg-slate-800 dark:prose-th:text-blue-300",
 				"prose-td:border prose-td:border-border prose-td:p-2",
+				"dark:prose-td:text-gray-300",
+				// 加粗和斜体
+				"dark:prose-strong:text-white",
+				"dark:prose-em:text-purple-300",
+				// 分割线
+				"dark:prose-hr:border-border",
 				className
 			)}
 		>

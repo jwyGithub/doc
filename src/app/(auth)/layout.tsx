@@ -17,7 +17,7 @@ export default async function AuthLayout({
 	return (
 		<>
 			{children}
-			<Toaster position="top-right" />
+			<Toaster position="bottom-right" />
 		</>
 	);
 }
