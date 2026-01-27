@@ -7,7 +7,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2, Sparkles, Copy, Check, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { MarkdownRenderer } from './markdown-renderer';
-import { XStream } from '@janone/xstream';
+import { type SSEOutput, XStream } from '@janone/xstream';
 
 interface AIBeautifyDialogProps {
     open: boolean;
@@ -43,17 +43,23 @@ export function AIBeautifyDialog({ open, onOpenChange, content, onReplace }: AIB
             }
 
             let accumulated = '';
-            const stream = XStream<string>({
-                readableStream: response.body!,
-                transformStream: new TransformStream({
-                    transform(chunk, controller) {
-                        controller.enqueue(chunk);
-                    }
-                })
+            const stream = XStream<SSEOutput>({
+                readableStream: response.body!
             });
 
             for await (const item of stream) {
-                accumulated += item;
+                const data = item.data;
+                if (!data) {
+                    continue;
+                }
+                try {
+                    const content = JSON.parse(data)?.choices?.[0]?.delta?.content;
+                    if (content) {
+                        accumulated += content;
+                    }
+                } catch (error) {
+                    continue;
+                }
             }
 
             if (!accumulated) {

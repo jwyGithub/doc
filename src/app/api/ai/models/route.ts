@@ -48,32 +48,17 @@ export async function POST(request: Request) {
             return Response.json({ error: '缺少 API Key' }, { status: 400 });
         }
 
-        // 调用 Google Generative AI 模型列表 API
-        const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=100', {
-            method: 'GET',
-            headers: {
-                'x-goog-api-key': apiKey
-            }
+        return Response.json({
+            models: [
+                {
+                    id: 'GLM-4.7-Flash',
+                    name: 'GLM-4.7-Flash',
+                    displayName: 'GLM-4.7-Flash',
+                    description: 'GLM-4.7-Flash',
+                    supportedGenerationMethods: ['generateContent']
+                }
+            ]
         });
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('Failed to fetch models:', errorText);
-            return Response.json({ error: '获取模型列表失败，请检查 API Key 是否正确' }, { status: response.status });
-        }
-
-        const data = (await response.json()) as ModelsResponse;
-
-        // 过滤出支持生成内容的模型
-        const generativeModels = data.models
-            .filter(item => item.supportedGenerationMethods.includes('generateContent'))
-            .map(model => ({
-                id: model.name.replace('models/', ''),
-                name: model.name,
-                description: model.description || ''
-            }));
-
-        return Response.json({ models: generativeModels });
     } catch (error) {
         console.error('Failed to list models:', error);
         const message = error instanceof Error ? error.message : '获取模型列表失败';

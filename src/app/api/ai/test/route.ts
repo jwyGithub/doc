@@ -3,7 +3,7 @@ import { getD1Database } from '@/lib/cloudflare';
 import { eq } from 'drizzle-orm';
 
 const AI_CONFIG_KEY = 'ai_config';
-const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
+const GEMINI_API_BASE = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
 
 interface AIConfigData {
     apiKey: string;
@@ -40,11 +40,7 @@ export async function POST(request: Request) {
             const d1 = await getD1Database();
             const db = createDb(d1);
 
-            const configResult = await db
-                .select()
-                .from(settings)
-                .where(eq(settings.key, AI_CONFIG_KEY))
-                .get();
+            const configResult = await db.select().from(settings).where(eq(settings.key, AI_CONFIG_KEY)).get();
 
             if (configResult) {
                 const config = JSON.parse(configResult.value) as AIConfigData;
@@ -57,25 +53,20 @@ export async function POST(request: Request) {
         }
 
         // 使用原生 fetch 调用 Gemini API
-        const response = await fetch(`${GEMINI_API_BASE}/${model}:generateContent?key=${apiKey}`, {
+        const response = await fetch(GEMINI_API_BASE, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${apiKey}`
             },
             body: JSON.stringify({
-                contents: [
+                model: model,
+                messages: [
                     {
                         role: 'user',
-                        parts: [
-                            {
-                                text: "Hi, just testing the connection. Reply with 'OK' only."
-                            }
-                        ]
+                        content: 'Hi, just testing the connection. Reply with "OK" only.'
                     }
-                ],
-                generationConfig: {
-                    maxOutputTokens: 10
-                }
+                ]
             })
         });
 
@@ -86,8 +77,7 @@ export async function POST(request: Request) {
             return Response.json({ error: errorMessage }, { status: 500 });
         }
 
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (text) {
+        if (data) {
             return Response.json({ success: true, message: '连接成功' });
         } else {
             return Response.json({ error: '未收到有效响应' }, { status: 500 });
@@ -98,3 +88,4 @@ export async function POST(request: Request) {
         return Response.json({ error: message }, { status: 500 });
     }
 }
+
