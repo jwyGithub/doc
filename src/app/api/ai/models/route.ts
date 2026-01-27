@@ -65,17 +65,11 @@ export async function POST(request: Request) {
         const data = (await response.json()) as ModelsResponse;
 
         // 过滤出支持生成内容的模型
-        const generativeModels = data.models
-            .filter(
-                model =>
-                    model.supportedGenerationMethods?.includes('generateContent') ||
-                    model.supportedGenerationMethods?.includes('streamGenerateContent')
-            )
-            .map(model => ({
-                id: model.name.replace('models/', ''),
-                name: model.displayName || model.name.replace('models/', ''),
-                description: model.description || ''
-            }));
+        const generativeModels = data.models.map(model => ({
+            id: model.name.replace('models/', ''),
+            name: model.name,
+            description: model.description || ''
+        }));
 
         return Response.json({ models: generativeModels });
     } catch (error) {
