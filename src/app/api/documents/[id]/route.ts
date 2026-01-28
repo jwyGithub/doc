@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { createDb, documents } from "@/db";
 import { getD1Database } from "@/lib/cloudflare";
 import { requireAuth } from "@/lib/session";
+import { NextResponse } from "next/server";
 
 export async function GET(
 	_request: Request,
@@ -20,17 +21,17 @@ export async function GET(
 			.limit(1);
 
 		if (!doc) {
-			return Response.json(
+			return NextResponse.json(
 				{ error: "Document not found" },
 				{ status: 404 }
 			);
 		}
 
-		return Response.json({ document: doc });
+		return NextResponse.json({ document: doc });
 	} catch (error) {
 		const message =
 			error instanceof Error ? error.message : "Failed to fetch document";
-		return Response.json({ error: message }, { status: 500 });
+		return NextResponse.json({ error: message }, { status: 500 });
 	}
 }
 
@@ -60,7 +61,7 @@ export async function PUT(
 			.limit(1);
 
 		if (!existing) {
-			return Response.json(
+			return NextResponse.json(
 				{ error: "Document not found" },
 				{ status: 404 }
 			);
@@ -83,11 +84,11 @@ export async function PUT(
 			.where(eq(documents.id, id))
 			.limit(1);
 
-		return Response.json({ document: updated });
+		return NextResponse.json({ document: updated });
 	} catch (error) {
 		const message =
 			error instanceof Error ? error.message : "Failed to update document";
-		return Response.json({ error: message }, { status: 500 });
+		return NextResponse.json({ error: message }, { status: 500 });
 	}
 }
 
@@ -108,7 +109,7 @@ export async function DELETE(
 			.limit(1);
 
 		if (!existing) {
-			return Response.json(
+			return NextResponse.json(
 				{ error: "Document not found" },
 				{ status: 404 }
 			);
@@ -130,10 +131,10 @@ export async function DELETE(
 
 		await deleteRecursive(id);
 
-		return Response.json({ success: true });
+		return NextResponse.json({ success: true });
 	} catch (error) {
 		const message =
 			error instanceof Error ? error.message : "Failed to delete document";
-		return Response.json({ error: message }, { status: 500 });
+		return NextResponse.json({ error: message }, { status: 500 });
 	}
 }

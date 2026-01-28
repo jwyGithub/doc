@@ -1,6 +1,7 @@
 import { createDb, settings } from '@/db';
 import { getD1Database } from '@/lib/cloudflare';
 import { eq } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
 
 const AI_CONFIG_KEY = 'ai_config';
 
@@ -16,16 +17,12 @@ export async function GET() {
         const d1 = await getD1Database();
         const db = createDb(d1);
 
-        const result = await db
-            .select()
-            .from(settings)
-            .where(eq(settings.key, AI_CONFIG_KEY))
-            .get();
+        const result = await db.select().from(settings).where(eq(settings.key, AI_CONFIG_KEY)).get();
 
         if (result) {
             const config = JSON.parse(result.value) as AIConfigData;
             // 不返回完整的 apiKey，只返回部分用于显示
-            return Response.json({
+            return NextResponse.json({
                 apiKey: config.apiKey ? `${config.apiKey.slice(0, 8)}...` : '',
                 apiKeyConfigured: !!config.apiKey,
                 model: config.model,
@@ -33,7 +30,7 @@ export async function GET() {
             });
         }
 
-        return Response.json({
+        return NextResponse.json({
             apiKey: '',
             apiKeyConfigured: false,
             model: '',
@@ -41,7 +38,7 @@ export async function GET() {
         });
     } catch (error) {
         console.error('Failed to get AI config:', error);
-        return Response.json({ error: '获取配置失败' }, { status: 500 });
+        return NextResponse.json({ error: '获取配置失败' }, { status: 500 });
     }
 }
 
@@ -56,11 +53,7 @@ export async function POST(request: Request) {
         // 如果传入的 apiKey 是遮罩格式（包含...），则保留原有的 apiKey
         let apiKeyToSave = body.apiKey;
         if (body.apiKey?.includes('...')) {
-            const existing = await db
-                .select()
-                .from(settings)
-                .where(eq(settings.key, AI_CONFIG_KEY))
-                .get();
+            const existing = await db.select().from(settings).where(eq(settings.key, AI_CONFIG_KEY)).get();
             if (existing) {
                 const existingConfig = JSON.parse(existing.value) as AIConfigData;
                 apiKeyToSave = existingConfig.apiKey;
@@ -74,17 +67,10 @@ export async function POST(request: Request) {
         });
 
         // 使用 upsert 逻辑
-        const existing = await db
-            .select()
-            .from(settings)
-            .where(eq(settings.key, AI_CONFIG_KEY))
-            .get();
+        const existing = await db.select().from(settings).where(eq(settings.key, AI_CONFIG_KEY)).get();
 
         if (existing) {
-            await db
-                .update(settings)
-                .set({ value: configValue, updatedAt: new Date() })
-                .where(eq(settings.key, AI_CONFIG_KEY));
+            await db.update(settings).set({ value: configValue, updatedAt: new Date() }).where(eq(settings.key, AI_CONFIG_KEY));
         } else {
             await db.insert(settings).values({
                 id: crypto.randomUUID(),
@@ -93,9 +79,10 @@ export async function POST(request: Request) {
             });
         }
 
-        return Response.json({ success: true });
+        return NextResponse.json({ success: true });
     } catch (error) {
         console.error('Failed to save AI config:', error);
-        return Response.json({ error: '保存配置失败' }, { status: 500 });
+        return NextResponse.json({ error: '保存配置失败' }, { status: 500 });
     }
 }
+

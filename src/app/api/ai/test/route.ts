@@ -4,6 +4,7 @@ import { eq } from 'drizzle-orm';
 import { createOpenAI } from '@ai-sdk/openai';
 import { generateText } from 'ai';
 import { AI_BASE_URL, AI_CONFIG_KEY } from '@/constants';
+import { NextResponse } from 'next/server';
 
 interface AIConfigData {
     apiKey: string;
@@ -49,7 +50,7 @@ export async function POST(request: Request) {
         }
 
         if (!apiKey || !model) {
-            return Response.json({ error: '缺少必要参数' }, { status: 400 });
+            return NextResponse.json({ error: '缺少必要参数' }, { status: 400 });
         }
 
         const openaiProvider = createOpenAI({
@@ -72,14 +73,14 @@ export async function POST(request: Request) {
         });
 
         if (result) {
-            return Response.json({ success: true, message: '连接成功' });
+            return NextResponse.json({ success: true, message: '连接成功' });
         } else {
-            return Response.json({ error: '未收到有效响应' }, { status: 500 });
+            return NextResponse.json({ error: '未收到有效响应' }, { status: 500 });
         }
     } catch (error) {
         console.error('AI test failed:', error);
         const message = error instanceof Error ? error.message : '连接测试失败';
-        return Response.json({ error: message }, { status: 500 });
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }
 

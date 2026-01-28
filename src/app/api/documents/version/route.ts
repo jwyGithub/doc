@@ -2,6 +2,7 @@ import { getD1Database } from "@/lib/cloudflare";
 import { createDb } from "@/db";
 import { documents, settings } from "@/db/schema";
 import { eq, max } from "drizzle-orm";
+import { NextResponse } from "next/server";
 
 /**
  * 获取文档版本号
@@ -32,10 +33,10 @@ export async function GET() {
 		// 取两者的最大值作为版本号
 		const version = Math.max(settingVersion, latestUpdate);
 
-		return Response.json({ version });
+		return NextResponse.json({ version });
 	} catch (error) {
 		console.error("Failed to get document version:", error);
 		// 出错时返回当前时间戳，强制客户端刷新
-		return Response.json({ version: Date.now() });
+		return NextResponse.json({ version: Date.now() });
 	}
 }

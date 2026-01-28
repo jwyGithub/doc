@@ -1,6 +1,7 @@
 import { createDb, settings } from '@/db';
 import { getD1Database } from '@/lib/cloudflare';
 import { eq } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
 
 const AI_CONFIG_KEY = 'ai_config';
 
@@ -45,10 +46,10 @@ export async function POST(request: Request) {
         }
 
         if (!apiKey) {
-            return Response.json({ error: '缺少 API Key' }, { status: 400 });
+            return NextResponse.json({ error: '缺少 API Key' }, { status: 400 });
         }
 
-        return Response.json({
+        return NextResponse.json({
             models: [
                 {
                     id: 'GLM-4.7-Flash',
@@ -62,7 +63,7 @@ export async function POST(request: Request) {
     } catch (error) {
         console.error('Failed to list models:', error);
         const message = error instanceof Error ? error.message : '获取模型列表失败';
-        return Response.json({ error: message }, { status: 500 });
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }
 
