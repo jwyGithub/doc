@@ -33,6 +33,7 @@ import {
 	Plus,
 	FolderOpen,
 	Sparkles,
+	Link2,
 } from "lucide-react";
 import { signOut } from "@/lib/auth-client";
 import type { User } from "@/db/schema";
@@ -40,6 +41,7 @@ import { DocumentTree } from "./document-tree";
 import { ThemeToggle } from "./theme-toggle";
 import { UsersDialog } from "./users-dialog";
 import { SettingsDialog } from "./settings-dialog";
+import { SharesDialog } from "./shares-dialog";
 
 // 延迟加载 AI 配置对话框
 const AIConfigDialog = lazy(() => import("./ai-config-dialog").then(mod => ({ default: mod.AIConfigDialog })));
@@ -54,6 +56,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
 	const [showAIConfig, setShowAIConfig] = useState(false);
 	const [showUsers, setShowUsers] = useState(false);
 	const [showSettings, setShowSettings] = useState(false);
+	const [showShares, setShowShares] = useState(false);
 	const isAdmin = user.role === "admin" || user.role === "superadmin";
 	const isSuperAdmin = user.role === "superadmin";
 
@@ -138,6 +141,10 @@ export function AppSidebar({ user }: AppSidebarProps) {
 									<Sparkles className="mr-2 h-4 w-4" />
 									<span>AI 配置</span>
 								</DropdownMenuItem>
+								<DropdownMenuItem onClick={() => setShowShares(true)}>
+									<Link2 className="mr-2 h-4 w-4" />
+									<span>分享管理</span>
+								</DropdownMenuItem>
 								{isAdmin && (
 									<>
 										<DropdownMenuItem onClick={() => setShowUsers(true)}>
@@ -170,6 +177,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
 			)}
 			<UsersDialog open={showUsers} onOpenChange={setShowUsers} />
 			<SettingsDialog open={showSettings} onOpenChange={setShowSettings} />
+			<SharesDialog open={showShares} onOpenChange={setShowShares} />
 		</Sidebar>
 	);
 }

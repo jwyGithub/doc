@@ -14,7 +14,8 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Edit, Trash2, Loader2 } from "lucide-react";
+import { Edit, Trash2, Loader2, Download, Share2 } from "lucide-react";
+import { ShareDialog } from "./share-dialog";
 import { toast } from "sonner";
 import { triggerDocumentsRefresh } from "@/hooks/use-documents";
 import { onDocumentDeleted } from "@/lib/search";
@@ -31,6 +32,7 @@ interface DocumentViewerProps {
 export function DocumentViewer({ document: doc, highlight }: DocumentViewerProps) {
 	const router = useRouter();
 	const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+	const [showShareDialog, setShowShareDialog] = useState(false);
 	const [isDeleting, setIsDeleting] = useState(false);
 	const contentRef = useRef<HTMLDivElement>(null);
 
@@ -141,6 +143,34 @@ export function DocumentViewer({ document: doc, highlight }: DocumentViewerProps
 		}
 	}, [highlight, doc.content, highlightAndScroll]);
 
+	const handleExport = useCallback(() => {
+		if (!doc.content) {
+			toast.error("文档内容为空，无法导出");
+			return;
+		}
+
+		// 创建 Blob 对象
+		const blob = new Blob([doc.content], { type: "text/markdown;charset=utf-8" });
+		
+		// 创建下载链接
+		const url = URL.createObjectURL(blob);
+		const link = globalThis.document.createElement("a");
+		link.href = url;
+		// 使用文档标题作为文件名，替换不合法的文件名字符
+		const fileName = doc.title.replace(/[/\\?%*:|"<>]/g, "-") + ".md";
+		link.download = fileName;
+		
+		// 触发下载
+		globalThis.document.body.appendChild(link);
+		link.click();
+		
+		// 清理
+		globalThis.document.body.removeChild(link);
+		URL.revokeObjectURL(url);
+		
+		toast.success("文档已导出");
+	}, [doc.content, doc.title]);
+
 	const handleDelete = async () => {
 		setIsDeleting(true);
 		try {
@@ -180,6 +210,23 @@ export function DocumentViewer({ document: doc, highlight }: DocumentViewerProps
 					>
 						<Edit className="h-4 w-4 mr-2" />
 						编辑
+					</Button>
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={handleExport}
+						disabled={!doc.content}
+					>
+						<Download className="h-4 w-4 mr-2" />
+						导出
+					</Button>
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={() => setShowShareDialog(true)}
+					>
+						<Share2 className="h-4 w-4 mr-2" />
+						分享
 					</Button>
 					<Button
 						variant="outline"
@@ -244,6 +291,13 @@ export function DocumentViewer({ document: doc, highlight }: DocumentViewerProps
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>
+
+			<ShareDialog
+				open={showShareDialog}
+				onOpenChange={setShowShareDialog}
+				documentId={doc.id}
+				documentTitle={doc.title}
+			/>
 		</div>
 	);
 }

@@ -98,6 +98,26 @@ export const documents = sqliteTable("documents", {
 		.$defaultFn(() => new Date()),
 });
 
+// 文档分享表
+export const shares = sqliteTable("shares", {
+	id: text("id").primaryKey(),
+	documentId: text("document_id")
+		.notNull()
+		.references(() => documents.id, { onDelete: "cascade" }),
+	userId: text("user_id")
+		.notNull()
+		.references(() => users.id, { onDelete: "cascade" }),
+	password: text("password"), // 访问密码，可为空表示无密码
+	expiresAt: integer("expires_at", { mode: "timestamp" }), // 过期时间，可为空表示永不过期
+	viewCount: integer("view_count").notNull().default(0), // 访问次数
+	createdAt: integer("created_at", { mode: "timestamp" })
+		.notNull()
+		.$defaultFn(() => new Date()),
+	updatedAt: integer("updated_at", { mode: "timestamp" })
+		.notNull()
+		.$defaultFn(() => new Date()),
+});
+
 // 系统设置表
 export const settings = sqliteTable("settings", {
 	id: text("id").primaryKey(),
@@ -124,3 +144,5 @@ export type Document = typeof documents.$inferSelect;
 export type NewDocument = typeof documents.$inferInsert;
 export type Setting = typeof settings.$inferSelect;
 export type NewSetting = typeof settings.$inferInsert;
+export type Share = typeof shares.$inferSelect;
+export type NewShare = typeof shares.$inferInsert;

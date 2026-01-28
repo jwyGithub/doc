@@ -15,6 +15,20 @@
       "when": 1769419577803,
       "tag": "0001_huge_susan_delgado",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1769602852532,
+      "tag": "0002_clear_expediter",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1769680000000,
+      "tag": "0003_add_shares_table",
+      "breakpoints": true
     }
   ]
 }
