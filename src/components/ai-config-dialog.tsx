@@ -23,6 +23,7 @@ interface ModelOption {
 
 interface AIConfig {
     apiKey: string;
+    baseUrl: string;
     model: string;
     systemPrompt: string;
 }
@@ -45,6 +46,7 @@ const DEFAULT_SYSTEM_PROMPT = `你是一个专业的 Markdown 文档格式化助
 
 const DEFAULT_CONFIG: AIConfig = {
     apiKey: '',
+    baseUrl: '',
     model: '',
     systemPrompt: DEFAULT_SYSTEM_PROMPT
 };
@@ -67,21 +69,20 @@ export function AIConfigDialog({ open, onOpenChange }: AIConfigDialogProps) {
             const data = (await res.json()) as {
                 apiKey: string;
                 apiKeyConfigured: boolean;
+                baseUrl: string;
                 model: string;
                 systemPrompt: string;
             };
 
             setConfig({
                 apiKey: data.apiKey || '',
+                baseUrl: data.baseUrl || DEFAULT_CONFIG.baseUrl,
                 model: data.model || DEFAULT_CONFIG.model,
                 systemPrompt: data.systemPrompt || DEFAULT_CONFIG.systemPrompt
             });
             setApiKeyConfigured(data.apiKeyConfigured);
 
-            // 如果已配置 API Key，自动加载模型列表
-            if (data.apiKeyConfigured) {
-                loadModels();
-            }
+            loadModels();
         } catch (error) {
             console.error('Failed to load config:', error);
         } finally {
@@ -139,20 +140,6 @@ export function AIConfigDialog({ open, onOpenChange }: AIConfigDialogProps) {
         setConfig(prev => ({ ...prev, model: value }));
     };
 
-    const handleRefreshModels = () => {
-        if (!config.apiKey || config.apiKey.includes('...')) {
-            if (apiKeyConfigured) {
-                // 使用已保存的 API Key
-                loadModels();
-            } else {
-                toast.error('请先填写新的 API Key');
-            }
-        } else {
-            // 使用新输入的 API Key
-            loadModels(config.apiKey);
-        }
-    };
-
     const handleSave = async () => {
         if (!config.apiKey && !apiKeyConfigured) {
             toast.error('请填写 API Key');
@@ -205,6 +192,7 @@ export function AIConfigDialog({ open, onOpenChange }: AIConfigDialogProps) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     apiKey: config.apiKey.includes('...') ? undefined : config.apiKey,
+                    baseUrl: config.baseUrl,
                     model: config.model
                 })
             });
@@ -260,7 +248,7 @@ export function AIConfigDialog({ open, onOpenChange }: AIConfigDialogProps) {
                             <Input
                                 id='apiKey'
                                 type={showApiKey ? 'text' : 'password'}
-                                placeholder={apiKeyConfigured ? '已配置，输入新值可更新' : '输入您的 Google AI API Key'}
+                                placeholder={apiKeyConfigured ? '已配置，输入新值可更新' : '输入您的 API Key'}
                                 value={config.apiKey}
                                 onChange={e => handleApiKeyChange(e.target.value)}
                                 className='pr-10'
@@ -278,13 +266,24 @@ export function AIConfigDialog({ open, onOpenChange }: AIConfigDialogProps) {
                     </div>
 
                     <div className='space-y-2'>
+                        <Label htmlFor='baseUrl'>Base URL</Label>
+                        <Input
+                            id='baseUrl'
+                            type='text'
+                            placeholder='输入 AI 服务的 Base URL'
+                            value={config.baseUrl}
+                            onChange={e => setConfig(prev => ({ ...prev, baseUrl: e.target.value }))}
+                        />
+                    </div>
+
+                    <div className='space-y-2'>
                         <div className='flex items-center justify-between'>
                             <Label htmlFor='model'>默认模型</Label>
                             <Button
                                 type='button'
                                 variant='ghost'
                                 size='sm'
-                                onClick={handleRefreshModels}
+                                onClick={() => loadModels()}
                                 disabled={isLoadingModels}
                                 className='h-7 px-2'
                             >

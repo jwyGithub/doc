@@ -7,6 +7,7 @@ const AI_CONFIG_KEY = 'ai_config';
 
 interface AIConfigData {
     apiKey: string;
+    baseUrl?: string;
     model: string;
     systemPrompt: string;
 }
@@ -25,6 +26,7 @@ export async function GET() {
             return NextResponse.json({
                 apiKey: config.apiKey ? `${config.apiKey.slice(0, 8)}...` : '',
                 apiKeyConfigured: !!config.apiKey,
+                baseUrl: config.baseUrl || '',
                 model: config.model,
                 systemPrompt: config.systemPrompt
             });
@@ -33,6 +35,7 @@ export async function GET() {
         return NextResponse.json({
             apiKey: '',
             apiKeyConfigured: false,
+            baseUrl: '',
             model: '',
             systemPrompt: ''
         });
@@ -62,6 +65,7 @@ export async function POST(request: Request) {
 
         const configValue = JSON.stringify({
             apiKey: apiKeyToSave,
+            baseUrl: body.baseUrl || '',
             model: body.model,
             systemPrompt: body.systemPrompt
         });

@@ -3,17 +3,19 @@ import { getD1Database } from '@/lib/cloudflare';
 import { eq } from 'drizzle-orm';
 import { createOpenAI } from '@ai-sdk/openai';
 import { generateText } from 'ai';
-import { AI_BASE_URL, AI_CONFIG_KEY } from '@/constants';
+import { AI_CONFIG_KEY } from '@/constants';
 import { NextResponse } from 'next/server';
 
 interface AIConfigData {
     apiKey: string;
+    baseUrl?: string;
     model: string;
     systemPrompt: string;
 }
 
 interface TestRequestBody {
     apiKey?: string;
+    baseUrl?: string;
     model: string;
 }
 
@@ -34,10 +36,11 @@ export async function POST(request: Request) {
     try {
         const body = (await request.json()) as TestRequestBody;
         let apiKey = body.apiKey;
+        let baseUrl = body.baseUrl;
         const { model } = body;
 
-        // 如果没有传入 apiKey，从数据库获取
-        if (!apiKey) {
+        // 如果没有传入 apiKey 或 baseUrl，从数据库获取
+        if (!apiKey || !baseUrl) {
             const d1 = await getD1Database();
             const db = createDb(d1);
 
@@ -45,7 +48,8 @@ export async function POST(request: Request) {
 
             if (configResult) {
                 const config = JSON.parse(configResult.value) as AIConfigData;
-                apiKey = config.apiKey;
+                if (!apiKey) apiKey = config.apiKey;
+                if (!baseUrl) baseUrl = config.baseUrl;
             }
         }
 
@@ -55,7 +59,7 @@ export async function POST(request: Request) {
 
         const openaiProvider = createOpenAI({
             apiKey: apiKey,
-            baseURL: AI_BASE_URL,
+            baseURL: baseUrl,
             headers: {
                 'Content-Type': 'application/json',
                 Authorization: `Bearer ${apiKey}`

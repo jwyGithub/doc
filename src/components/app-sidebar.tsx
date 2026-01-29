@@ -34,6 +34,7 @@ import {
 	FolderOpen,
 	Sparkles,
 	Link2,
+	MessageSquare,
 } from "lucide-react";
 import { signOut } from "@/lib/auth-client";
 import type { User } from "@/db/schema";
@@ -45,6 +46,8 @@ import { SharesDialog } from "./shares-dialog";
 
 // 延迟加载 AI 配置对话框
 const AIConfigDialog = lazy(() => import("./ai-config-dialog").then(mod => ({ default: mod.AIConfigDialog })));
+// 延迟加载 AI 对话框
+const AIChatDialog = lazy(() => import("./ai-chat-dialog").then(mod => ({ default: mod.AIChatDialog })));
 
 interface AppSidebarProps {
 	user: User;
@@ -54,6 +57,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
 	const pathname = usePathname();
 	const router = useRouter();
 	const [showAIConfig, setShowAIConfig] = useState(false);
+	const [showAIChat, setShowAIChat] = useState(false);
 	const [showUsers, setShowUsers] = useState(false);
 	const [showSettings, setShowSettings] = useState(false);
 	const [showShares, setShowShares] = useState(false);
@@ -137,6 +141,10 @@ export function AppSidebar({ user }: AppSidebarProps) {
 									</p>
 								</div>
 								<DropdownMenuSeparator />
+								<DropdownMenuItem onClick={() => setShowAIChat(true)}>
+									<MessageSquare className="mr-2 h-4 w-4" />
+									<span>AI 对话</span>
+								</DropdownMenuItem>
 								<DropdownMenuItem onClick={() => setShowAIConfig(true)}>
 									<Sparkles className="mr-2 h-4 w-4" />
 									<span>AI 配置</span>
@@ -170,14 +178,19 @@ export function AppSidebar({ user }: AppSidebarProps) {
 				</SidebarMenu>
 			</SidebarFooter>
 
-			{showAIConfig && (
-				<Suspense fallback={null}>
-					<AIConfigDialog open={showAIConfig} onOpenChange={setShowAIConfig} />
-				</Suspense>
-			)}
-			<UsersDialog open={showUsers} onOpenChange={setShowUsers} />
-			<SettingsDialog open={showSettings} onOpenChange={setShowSettings} />
-			<SharesDialog open={showShares} onOpenChange={setShowShares} />
+		{showAIChat && (
+			<Suspense fallback={null}>
+				<AIChatDialog open={showAIChat} onOpenChange={setShowAIChat} />
+			</Suspense>
+		)}
+		{showAIConfig && (
+			<Suspense fallback={null}>
+				<AIConfigDialog open={showAIConfig} onOpenChange={setShowAIConfig} />
+			</Suspense>
+		)}
+		<UsersDialog open={showUsers} onOpenChange={setShowUsers} />
+		<SettingsDialog open={showSettings} onOpenChange={setShowSettings} />
+		<SharesDialog open={showShares} onOpenChange={setShowShares} />
 		</Sidebar>
 	);
 }

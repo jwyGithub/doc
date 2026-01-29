@@ -12,16 +12,30 @@ interface AIConfigData {
     systemPrompt: string;
 }
 
-interface BeautifyRequestBody {
+interface Message {
+    role: 'user' | 'assistant' | 'system';
     content: string;
+}
+
+interface ChatRequestBody {
+    messages: Message[];
+    systemPrompt: string;
+    model: string;
 }
 
 export async function POST(request: Request) {
     try {
-        const { content } = (await request.json()) as BeautifyRequestBody;
+        const { messages, systemPrompt, model } = (await request.json()) as ChatRequestBody;
 
-        if (!content) {
-            return new Response(JSON.stringify({ error: '缺少文档内容' }), {
+        if (!messages || messages.length === 0) {
+            return new Response(JSON.stringify({ error: '缺少消息内容' }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
+        if (!model) {
+            return new Response(JSON.stringify({ error: '缺少模型参数' }), {
                 status: 400,
                 headers: { 'Content-Type': 'application/json' }
             });
@@ -42,7 +56,7 @@ export async function POST(request: Request) {
 
         const config = JSON.parse(configResult.value) as AIConfigData;
 
-        if (!config.apiKey || !config.model || !config.baseUrl) {
+        if (!config.apiKey || !config.baseUrl) {
             return new Response(JSON.stringify({ error: 'AI 配置不完整' }), {
                 status: 400,
                 headers: { 'Content-Type': 'application/json' }
@@ -58,18 +72,18 @@ export async function POST(request: Request) {
             }
         });
 
+        // 构建完整的消息列表
+        const fullMessages: Message[] = [
+            {
+                role: 'system',
+                content: systemPrompt
+            },
+            ...messages
+        ];
+
         const result = streamText({
-            model: openaiProvider.chat(config.model),
-            messages: [
-                {
-                    role: 'system',
-                    content: config.systemPrompt
-                },
-                {
-                    role: 'user',
-                    content: content
-                }
-            ],
+            model: openaiProvider.chat(model),
+            messages: fullMessages,
             providerOptions: {
                 openai: {
                     stream: true,
@@ -81,6 +95,7 @@ export async function POST(request: Request) {
                 }
             }
         });
+
         return result.toTextStreamResponse({
             headers: {
                 'Content-Type': 'text/event-stream',
@@ -89,8 +104,8 @@ export async function POST(request: Request) {
             }
         });
     } catch (error) {
-        console.error('AI beautify failed:', error);
-        const message = error instanceof Error ? error.message : '美化失败';
+        console.error('AI chat failed:', error);
+        const message = error instanceof Error ? error.message : '对话失败';
         return new Response(JSON.stringify({ error: message }), {
             status: 500,
             headers: { 'Content-Type': 'application/json' }
