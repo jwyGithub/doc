@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, lazy, Suspense } from "react";
+import { useState, useEffect, useCallback, useRef, lazy, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { ArrowLeft, Save, Loader2, Edit, Eye, Sparkles, Columns2, PanelLeft, PanelRight } from "lucide-react";
 import { toast } from "sonner";
 import { triggerDocumentsRefresh } from "@/hooks/use-documents";
+import { useImagePaste } from "@/hooks/use-image-paste";
 import { onDocumentCreated } from "@/lib/search";
 import type { Document } from "@/db/schema";
 
@@ -34,6 +35,7 @@ export default function NewDocumentPage() {
 	const [isLoading, setIsLoading] = useState(false);
 	const [showAIBeautify, setShowAIBeautify] = useState(false);
 	const [viewMode, setViewMode] = useState<"split" | "edit" | "preview">("split");
+	const textareaRef = useRef<HTMLTextAreaElement>(null);
 
 	useEffect(() => {
 		const fetchDocuments = async () => {
@@ -47,6 +49,34 @@ export default function NewDocumentPage() {
 		};
 		fetchDocuments();
 	}, []);
+
+	// 在光标位置插入图片
+	const insertImageAtCursor = useCallback(
+		(imageMarkdown: string) => {
+			const textarea = textareaRef.current;
+			if (!textarea) return;
+
+			const start = textarea.selectionStart;
+			const end = textarea.selectionEnd;
+			const newContent = content.substring(0, start) + imageMarkdown + content.substring(end);
+
+			setContent(newContent);
+
+			// 设置光标位置到插入内容之后
+			setTimeout(() => {
+				textarea.focus();
+				const newPosition = start + imageMarkdown.length;
+				textarea.setSelectionRange(newPosition, newPosition);
+			}, 0);
+		},
+		[content]
+	);
+
+	// 使用图片粘贴 hook
+	const { handlePaste } = useImagePaste({
+		onImageInsert: insertImageAtCursor,
+		disabled: isLoading
+	});
 
 	const handleSubmit = async () => {
 		if (!title.trim()) {
@@ -186,8 +216,10 @@ export default function NewDocumentPage() {
 							</div>
 							<div className="flex-1 min-h-0 p-4 overflow-hidden">
 								<textarea
+									ref={textareaRef}
 									value={content}
 									onChange={(e) => setContent(e.target.value)}
+									onPaste={handlePaste}
 									placeholder="使用 Markdown 格式编写文档内容..."
 									className="h-full w-full font-mono resize-none rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 overflow-auto"
 									disabled={isLoading}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
@@ -8,6 +8,7 @@ import rehypeRaw from "rehype-raw";
 import "highlight.js/styles/github-dark.css";
 import { cn } from "@/lib/utils";
 import { Check, Copy } from "lucide-react";
+import { rehypeHeadingTree } from "@/lib/rehype-heading-tree";
 
 // 复制按钮组件
 function CopyButton({ text }: { text: string }) {
@@ -41,11 +42,50 @@ interface MarkdownRendererProps {
 }
 
 export function MarkdownRenderer({ content, className }: MarkdownRendererProps) {
+	// 创建自定义组件
+	const components = useMemo(() => ({
+			// 自定义链接在新标签页打开外部链接
+			a: ({ href, children, ...props }: React.HTMLAttributes<HTMLAnchorElement> & { href?: string }) => {
+				const isExternal = href?.startsWith("http");
+				return (
+					<a
+						href={href}
+						target={isExternal ? "_blank" : undefined}
+						rel={isExternal ? "noopener noreferrer" : undefined}
+						{...props}
+					>
+						{children}
+					</a>
+				);
+			},
+			// 自定义代码块 - 添加复制按钮
+			pre: ({ children, ...props }: React.HTMLAttributes<HTMLPreElement>) => {
+				// 提取代码文本
+				const getCodeText = (node: React.ReactNode): string => {
+					if (typeof node === "string") return node;
+					if (Array.isArray(node)) return node.map(getCodeText).join("");
+					if (node && typeof node === "object" && "props" in node) {
+						const element = node as { props: { children?: React.ReactNode } };
+						return getCodeText(element.props.children);
+					}
+					return "";
+				};
+				const codeText = getCodeText(children);
+
+				return (
+					<pre className="relative group" {...props}>
+						{children}
+						{codeText && <CopyButton text={codeText} />}
+					</pre>
+				);
+			},
+	}), []);
+
 	return (
 		<div
 			className={cn(
 				"prose prose-neutral dark:prose-invert max-w-none",
-				"prose-headings:scroll-mt-20",
+				"prose-headings:scroll-mt-24",
 				// 标题样式 - 暗色模式使用渐变色
 				"prose-h1:text-3xl prose-h1:font-bold prose-h1:border-b prose-h1:pb-2 prose-h1:border-border",
 				"dark:prose-h1:text-transparent dark:prose-h1:bg-clip-text dark:prose-h1:bg-gradient-to-r dark:prose-h1:from-blue-400 dark:prose-h1:to-purple-400",
@@ -89,44 +129,8 @@ export function MarkdownRenderer({ content, className }: MarkdownRendererProps) 
 		>
 			<ReactMarkdown
 				remarkPlugins={[remarkGfm]}
-				rehypePlugins={[rehypeHighlight, rehypeRaw]}
-				components={{
-					// 自定义链接在新标签页打开外部链接
-					a: ({ href, children, ...props }) => {
-						const isExternal = href?.startsWith("http");
-						return (
-							<a
-								href={href}
-								target={isExternal ? "_blank" : undefined}
-								rel={isExternal ? "noopener noreferrer" : undefined}
-								{...props}
-							>
-								{children}
-							</a>
-						);
-					},
-					// 自定义代码块 - 添加复制按钮
-					pre: ({ children, ...props }) => {
-						// 提取代码文本
-						const getCodeText = (node: React.ReactNode): string => {
-							if (typeof node === "string") return node;
-							if (Array.isArray(node)) return node.map(getCodeText).join("");
-							if (node && typeof node === "object" && "props" in node) {
-								const element = node as { props: { children?: React.ReactNode } };
-								return getCodeText(element.props.children);
-							}
-							return "";
-						};
-						const codeText = getCodeText(children);
-
-						return (
-							<pre className="relative group" {...props}>
-								{children}
-								{codeText && <CopyButton text={codeText} />}
-							</pre>
-						);
-					},
-				}}
+				rehypePlugins={[rehypeRaw, rehypeHeadingTree, rehypeHighlight]}
+				components={components}
 			>
 				{content}
 			</ReactMarkdown>

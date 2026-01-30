@@ -14,12 +14,15 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Edit, Trash2, Loader2, Download, Share2 } from "lucide-react";
+import { Edit, Trash2, Loader2, Download, Share2, Menu } from "lucide-react";
 import { ShareDialog } from "./share-dialog";
+import { TableOfContents } from "./table-of-contents";
 import { toast } from "sonner";
 import { triggerDocumentsRefresh } from "@/hooks/use-documents";
 import { onDocumentDeleted } from "@/lib/search";
+import { extractHeadings } from "@/lib/toc";
 import type { Document } from "@/db/schema";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
 // 延迟加载 Markdown 渲染器
 const MarkdownRenderer = lazy(() => import("./markdown-renderer").then(mod => ({ default: mod.MarkdownRenderer })));
@@ -33,8 +36,12 @@ export function DocumentViewer({ document: doc, highlight }: DocumentViewerProps
 	const router = useRouter();
 	const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 	const [showShareDialog, setShowShareDialog] = useState(false);
+	const [showToc, setShowToc] = useState(false);
 	const [isDeleting, setIsDeleting] = useState(false);
 	const contentRef = useRef<HTMLDivElement>(null);
+	
+	// 提取文档目录
+	const tocItems = doc.content ? extractHeadings(doc.content) : [];
 
 	// 高亮并滚动到关键词位置
 	const highlightAndScroll = useCallback(() => {
@@ -203,6 +210,24 @@ export function DocumentViewer({ document: doc, highlight }: DocumentViewerProps
 					<h1 className="font-semibold truncate">{doc.title}</h1>
 				</div>
 				<div className="flex items-center gap-2">
+					{tocItems.length > 0 && (
+						<Sheet open={showToc} onOpenChange={setShowToc}>
+							<SheetTrigger asChild>
+								<Button variant="outline" size="sm">
+									<Menu className="h-4 w-4 mr-2" />
+									目录
+								</Button>
+							</SheetTrigger>
+							<SheetContent side="right" className="w-[300px] sm:w-[400px]">
+								<SheetHeader>
+									<SheetTitle>文档目录</SheetTitle>
+								</SheetHeader>
+								<div className="mt-6">
+									<TableOfContents items={tocItems} />
+								</div>
+							</SheetContent>
+						</Sheet>
+					)}
 					<Button
 						variant="outline"
 						size="sm"

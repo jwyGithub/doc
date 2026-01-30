@@ -35,6 +35,7 @@ import {
 	Sparkles,
 	Link2,
 	MessageSquare,
+	Database,
 } from "lucide-react";
 import { signOut } from "@/lib/auth-client";
 import type { User } from "@/db/schema";
@@ -43,6 +44,7 @@ import { ThemeToggle } from "./theme-toggle";
 import { UsersDialog } from "./users-dialog";
 import { SettingsDialog } from "./settings-dialog";
 import { SharesDialog } from "./shares-dialog";
+import { BlobManagerDialog } from "./blob-manager-dialog";
 
 // 延迟加载 AI 配置对话框
 const AIConfigDialog = lazy(() => import("./ai-config-dialog").then(mod => ({ default: mod.AIConfigDialog })));
@@ -61,6 +63,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
 	const [showUsers, setShowUsers] = useState(false);
 	const [showSettings, setShowSettings] = useState(false);
 	const [showShares, setShowShares] = useState(false);
+	const [showBlobManager, setShowBlobManager] = useState(false);
 	const isAdmin = user.role === "admin" || user.role === "superadmin";
 	const isSuperAdmin = user.role === "superadmin";
 
@@ -149,11 +152,15 @@ export function AppSidebar({ user }: AppSidebarProps) {
 									<Sparkles className="mr-2 h-4 w-4" />
 									<span>AI 配置</span>
 								</DropdownMenuItem>
-								<DropdownMenuItem onClick={() => setShowShares(true)}>
-									<Link2 className="mr-2 h-4 w-4" />
-									<span>分享管理</span>
-								</DropdownMenuItem>
-								{isAdmin && (
+							<DropdownMenuItem onClick={() => setShowShares(true)}>
+								<Link2 className="mr-2 h-4 w-4" />
+								<span>分享管理</span>
+							</DropdownMenuItem>
+							<DropdownMenuItem onClick={() => setShowBlobManager(true)}>
+								<Database className="mr-2 h-4 w-4" />
+								<span>Blob 管理</span>
+							</DropdownMenuItem>
+							{isAdmin && (
 									<>
 										<DropdownMenuItem onClick={() => setShowUsers(true)}>
 											<Users className="mr-2 h-4 w-4" />
@@ -191,6 +198,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
 		<UsersDialog open={showUsers} onOpenChange={setShowUsers} />
 		<SettingsDialog open={showSettings} onOpenChange={setShowSettings} />
 		<SharesDialog open={showShares} onOpenChange={setShowShares} />
+		<BlobManagerDialog open={showBlobManager} onOpenChange={setShowBlobManager} />
 		</Sidebar>
 	);
 }

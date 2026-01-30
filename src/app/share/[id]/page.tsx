@@ -7,6 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileText, Lock, Loader2, AlertCircle, Clock } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { TableOfContents } from '@/components/table-of-contents';
+import { extractHeadings } from '@/lib/toc';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 // 延迟加载 Markdown 渲染器
 const MarkdownRenderer = lazy(() =>
@@ -52,6 +55,9 @@ export default function SharePage({ params }: { params: Promise<{ id: string }> 
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isVerifying, setIsVerifying] = useState(false);
+    
+    // 提取文档目录
+    const tocItems = document?.content ? extractHeadings(document.content) : [];
 
 	// 加载文档内容
 	const loadDocument = useCallback(
@@ -120,6 +126,20 @@ export default function SharePage({ params }: { params: Promise<{ id: string }> 
 	useEffect(() => {
 		loadStatus();
 	}, [loadStatus]);
+
+	// 更新页面标题
+	useEffect(() => {
+		if (document?.title) {
+			window.document.title = document.title;
+		} else if (status?.documentTitle) {
+			window.document.title = status.documentTitle;
+		}
+
+		// 组件卸载时恢复默认标题
+		return () => {
+			window.document.title = '文档管理';
+		};
+	}, [document?.title, status?.documentTitle]);
 
     const handleSubmitPassword = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -220,25 +240,39 @@ export default function SharePage({ params }: { params: Promise<{ id: string }> 
 					</div>
 				</header>
 
-				<main className='flex-1 overflow-y-auto min-h-0'>
-					<div className='max-w-4xl mx-auto py-8 px-6'>
-						{document.content ? (
-							<Suspense
-								fallback={
-									<div className='flex items-center justify-center py-12'>
-										<Loader2 className='h-6 w-6 animate-spin' />
-									</div>
-								}
-							>
-								<MarkdownRenderer content={document.content} />
-							</Suspense>
-						) : (
-							<div className='text-center py-12 text-muted-foreground'>
-								<p>此文档暂无内容</p>
-							</div>
-						)}
-					</div>
-				</main>
+				<div className='flex-1 flex overflow-hidden min-h-0'>
+					{/* 左侧目录区域 */}
+					{tocItems.length > 0 && (
+						<aside className='w-64 border-r bg-muted/30 shrink-0 hidden lg:block'>
+							<ScrollArea className='h-full'>
+								<div className='p-6'>
+									<TableOfContents items={tocItems} />
+								</div>
+							</ScrollArea>
+						</aside>
+					)}
+
+					{/* 主内容区域 */}
+					<main className='flex-1 overflow-y-auto min-h-0'>
+						<div className='max-w-4xl mx-auto py-8 px-6'>
+							{document.content ? (
+								<Suspense
+									fallback={
+										<div className='flex items-center justify-center py-12'>
+											<Loader2 className='h-6 w-6 animate-spin' />
+										</div>
+									}
+								>
+									<MarkdownRenderer content={document.content} />
+								</Suspense>
+							) : (
+								<div className='text-center py-12 text-muted-foreground'>
+									<p>此文档暂无内容</p>
+								</div>
+							)}
+						</div>
+					</main>
+				</div>
 			</div>
 		);
 	}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, lazy, Suspense } from "react";
+import { useState, useEffect, useCallback, useRef, lazy, Suspense } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,11 +12,13 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ArrowLeft, Save, Loader2, Eye, Edit, Sparkles } from "lucide-react";
+import { ArrowLeft, Save, Loader2, Eye, Edit, Sparkles, Columns2, PanelLeft, PanelRight } from "lucide-react";
 import { toast } from "sonner";
 import { triggerDocumentsRefresh } from "@/hooks/use-documents";
+import { useImagePaste } from "@/hooks/use-image-paste";
 import { onDocumentUpdated } from "@/lib/search";
 import type { Document } from "@/db/schema";
 
@@ -36,6 +38,8 @@ export default function EditDocumentPage() {
 	const [isLoading, setIsLoading] = useState(false);
 	const [isFetching, setIsFetching] = useState(true);
 	const [showAIBeautify, setShowAIBeautify] = useState(false);
+	const [viewMode, setViewMode] = useState<"split" | "edit" | "preview">("split");
+	const textareaRef = useRef<HTMLTextAreaElement>(null);
 
 	const fetchDocument = useCallback(async () => {
 		try {
@@ -71,6 +75,34 @@ export default function EditDocumentPage() {
 		fetchDocument();
 		fetchDocuments();
 	}, [fetchDocument, fetchDocuments]);
+
+	// 在光标位置插入图片
+	const insertImageAtCursor = useCallback(
+		(imageMarkdown: string) => {
+			const textarea = textareaRef.current;
+			if (!textarea) return;
+
+			const start = textarea.selectionStart;
+			const end = textarea.selectionEnd;
+			const newContent = content.substring(0, start) + imageMarkdown + content.substring(end);
+
+			setContent(newContent);
+
+			// 设置光标位置到插入内容之后
+			setTimeout(() => {
+				textarea.focus();
+				const newPosition = start + imageMarkdown.length;
+				textarea.setSelectionRange(newPosition, newPosition);
+			}, 0);
+		},
+		[content]
+	);
+
+	// 使用图片粘贴 hook
+	const { handlePaste } = useImagePaste({
+		onImageInsert: insertImageAtCursor,
+		disabled: isLoading
+	});
 
 	const handleSubmit = async () => {
 		if (!title.trim()) {
@@ -183,15 +215,16 @@ export default function EditDocumentPage() {
 					</div>
 				</div>
 
-				<div className="flex-1 min-h-0 flex overflow-hidden">
-					{/* 编辑区域 */}
-					<div className="flex-1 flex flex-col border-r min-w-0">
-						<div className="px-4 py-2 border-b bg-muted/30 shrink-0">
-							<div className="flex items-center justify-between">
-								<div className="flex items-center gap-2 text-sm text-muted-foreground">
-									<Edit className="h-4 w-4" />
-									<span>编辑</span>
-								</div>
+			<div className="flex-1 min-h-0 flex overflow-hidden">
+				{/* 编辑区域 */}
+				{(viewMode === "split" || viewMode === "edit") && (
+					<div className={`flex flex-col min-w-0 ${viewMode === "split" ? "flex-1 border-r" : "flex-1"}`}>
+						<div className="h-11 px-4 border-b bg-muted/30 shrink-0 flex items-center justify-between">
+							<div className="flex items-center gap-2 text-sm text-muted-foreground">
+								<Edit className="h-4 w-4" />
+								<span>编辑</span>
+							</div>
+							<div className="flex items-center gap-2">
 								<Button
 									variant="ghost"
 									size="sm"
@@ -202,26 +235,54 @@ export default function EditDocumentPage() {
 									<Sparkles className="mr-1 h-3 w-3" />
 									AI 美化
 								</Button>
+								<ToggleGroup type="single" value={viewMode} onValueChange={(v) => v && setViewMode(v as typeof viewMode)} size="sm">
+									<ToggleGroupItem value="edit" aria-label="仅编辑" title="仅编辑">
+										<PanelLeft className="h-4 w-4" />
+									</ToggleGroupItem>
+									<ToggleGroupItem value="split" aria-label="双栏" title="双栏">
+										<Columns2 className="h-4 w-4" />
+									</ToggleGroupItem>
+									<ToggleGroupItem value="preview" aria-label="仅预览" title="仅预览">
+										<PanelRight className="h-4 w-4" />
+									</ToggleGroupItem>
+								</ToggleGroup>
 							</div>
 						</div>
 						<div className="flex-1 min-h-0 p-4 overflow-hidden">
 							<textarea
+								ref={textareaRef}
 								value={content}
 								onChange={(e) => setContent(e.target.value)}
+								onPaste={handlePaste}
 								placeholder="使用 Markdown 格式编写文档内容..."
 								className="h-full w-full font-mono resize-none rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 overflow-auto"
 								disabled={isLoading}
 							/>
 						</div>
 					</div>
+				)}
 
-					{/* 预览区域 */}
-					<div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-						<div className="px-4 py-2 border-b bg-muted/30 shrink-0">
+				{/* 预览区域 */}
+				{(viewMode === "split" || viewMode === "preview") && (
+					<div className={`flex flex-col min-w-0 overflow-hidden ${viewMode === "split" ? "flex-1" : "flex-1"}`}>
+						<div className="h-11 px-4 border-b bg-muted/30 shrink-0 flex items-center justify-between">
 							<div className="flex items-center gap-2 text-sm text-muted-foreground">
 								<Eye className="h-4 w-4" />
 								<span>预览</span>
 							</div>
+							{viewMode === "preview" && (
+								<ToggleGroup type="single" value={viewMode} onValueChange={(v) => v && setViewMode(v as typeof viewMode)} size="sm">
+									<ToggleGroupItem value="edit" aria-label="仅编辑" title="仅编辑">
+										<PanelLeft className="h-4 w-4" />
+									</ToggleGroupItem>
+									<ToggleGroupItem value="split" aria-label="双栏" title="双栏">
+										<Columns2 className="h-4 w-4" />
+									</ToggleGroupItem>
+									<ToggleGroupItem value="preview" aria-label="仅预览" title="仅预览">
+										<PanelRight className="h-4 w-4" />
+									</ToggleGroupItem>
+								</ToggleGroup>
+							)}
 						</div>
 						<ScrollArea className="flex-1 min-h-0">
 							<div className="p-4">
@@ -231,13 +292,14 @@ export default function EditDocumentPage() {
 									</Suspense>
 								) : (
 									<p className="text-muted-foreground text-center py-8">
-										在左侧输入内容后，这里将实时显示预览
+										{viewMode === "preview" ? "暂无内容，请切换到编辑模式输入内容" : "在左侧输入内容后，这里将实时显示预览"}
 									</p>
 								)}
 							</div>
 						</ScrollArea>
 					</div>
-				</div>
+				)}
+			</div>
 			</div>
 
 			{showAIBeautify && (
