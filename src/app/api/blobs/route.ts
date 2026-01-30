@@ -1,8 +1,6 @@
 import { list, del } from '@vercel/blob';
 import { NextResponse } from 'next/server';
 
-export const runtime = 'edge';
-
 // 列出所有 blob 文件
 export async function GET(request: Request) {
     try {
