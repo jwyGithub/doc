@@ -131,6 +131,24 @@ export const settings = sqliteTable("settings", {
 		.$defaultFn(() => new Date()),
 });
 
+// 资源表 - 存储图片等资源
+export const assets = sqliteTable("assets", {
+	id: text("id").primaryKey(),
+	filename: text("filename").notNull(), // 原始文件名
+	mimeType: text("mime_type").notNull(), // MIME 类型，如 image/png
+	size: integer("size").notNull(), // 文件大小（字节）
+	data: text("data").notNull(), // base64 编码的文件数据
+	uploadedBy: text("uploaded_by")
+		.notNull()
+		.references(() => users.id, { onDelete: "cascade" }), // 上传者
+	createdAt: integer("created_at", { mode: "timestamp" })
+		.notNull()
+		.$defaultFn(() => new Date()),
+	updatedAt: integer("updated_at", { mode: "timestamp" })
+		.notNull()
+		.$defaultFn(() => new Date()),
+});
+
 // 类型导出
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
@@ -146,3 +164,5 @@ export type Setting = typeof settings.$inferSelect;
 export type NewSetting = typeof settings.$inferInsert;
 export type Share = typeof shares.$inferSelect;
 export type NewShare = typeof shares.$inferInsert;
+export type Asset = typeof assets.$inferSelect;
+export type NewAsset = typeof assets.$inferInsert;

@@ -1,8 +1,24 @@
-import { put } from '@vercel/blob';
 import { NextResponse } from 'next/server';
+import { createDb } from '@/db';
+import { assets } from '@/db/schema';
+import { nanoid } from 'nanoid';
+import { getD1Database } from '@/lib/cloudflare';
+import { createAuth } from '@/lib/auth';
 
 export async function POST(request: Request) {
     try {
+        // 获取数据库连接
+        const d1 = await getD1Database();
+        const db = createDb(d1);
+
+        // 获取当前用户
+        const auth = createAuth(d1);
+        const session = await auth.api.getSession({ headers: request.headers });
+
+        if (!session?.user) {
+            return NextResponse.json({ error: '未登录' }, { status: 401 });
+        }
+
         const formData = await request.formData();
         const file = formData.get('file') as File;
 
@@ -21,22 +37,31 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: '图片大小不能超过 5MB' }, { status: 400 });
         }
 
-        // 生成文件名：timestamp-random.ext
-        const timestamp = Date.now();
-        const random = Math.random().toString(36).substring(2, 8);
-        const ext = file.name.split('.').pop() || 'png';
-        const filename = `documents/${timestamp}-${random}.${ext}`;
+        // 将文件转换为 base64
+        const arrayBuffer = await file.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        const base64Data = buffer.toString('base64');
 
-        // 上传到 Vercel Blob
-        const blob = await put(filename, file, {
-            access: 'public',
-            token: process.env.BLOB_READ_WRITE_TOKEN
+        // 生成唯一 ID
+        const assetId = nanoid();
+
+        // 保存到数据库
+        await db.insert(assets).values({
+            id: assetId,
+            filename: file.name,
+            mimeType: file.type,
+            size: file.size,
+            data: base64Data,
+            uploadedBy: session.user.id
         });
+
+        // 返回图片访问 URL
+        const url = `/api/assets/${assetId}`;
 
         return NextResponse.json({
             success: true,
-            url: blob.url,
-            filename: blob.pathname
+            url,
+            filename: file.name
         });
     } catch (error) {
         console.error('Image upload failed:', error);
@@ -44,3 +69,4 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: message }, { status: 500 });
     }
 }
+
