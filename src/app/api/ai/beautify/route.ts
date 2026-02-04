@@ -4,6 +4,7 @@ import { eq } from 'drizzle-orm';
 import { createOpenAI } from '@ai-sdk/openai';
 import { streamText } from 'ai';
 import { AI_CONFIG_KEY } from '@/constants';
+import { requireAuth } from '@/lib/session';
 
 interface AIConfigData {
     apiKey: string;
@@ -16,12 +17,29 @@ interface BeautifyRequestBody {
     content: string;
 }
 
+// 配置常量
+const MAX_TOKENS = 4096;
+const REQUEST_TIMEOUT = 30000;
+const MAX_CONTENT_LENGTH = 20000;
+
 export async function POST(request: Request) {
     try {
+        // ✅ 添加权限验证
+        await requireAuth();
+        
         const { content } = (await request.json()) as BeautifyRequestBody;
 
+        // ✅ 验证内容
         if (!content) {
             return new Response(JSON.stringify({ error: '缺少文档内容' }), {
+                status: 400,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
+        // ✅ 验证内容长度
+        if (content.length > MAX_CONTENT_LENGTH) {
+            return new Response(JSON.stringify({ error: '文档内容过长，请分段美化' }), {
                 status: 400,
                 headers: { 'Content-Type': 'application/json' }
             });
@@ -58,36 +76,51 @@ export async function POST(request: Request) {
             }
         });
 
-        const result = streamText({
-            model: openaiProvider.chat(config.model),
-            messages: [
-                {
-                    role: 'system',
-                    content: config.systemPrompt
-                },
-                {
-                    role: 'user',
-                    content: content
-                }
-            ],
-            providerOptions: {
-                openai: {
-                    stream: true,
-                    thinking: {
-                        type: 'disabled'
+        // ✅ 添加超时控制
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => {
+            controller.abort();
+            console.warn('[AI Beautify] Request timeout after 30s');
+        }, REQUEST_TIMEOUT);
+
+        try {
+            const result = streamText({
+                model: openaiProvider.chat(config.model),
+                messages: [
+                    {
+                        role: 'system',
+                        content: config.systemPrompt
                     },
-                    max_tokens: 65536,
-                    temperature: 1.0
+                    {
+                        role: 'user',
+                        content: content
+                    }
+                ],
+                abortSignal: controller.signal,
+                providerOptions: {
+                    openai: {
+                        stream: true,
+                        thinking: {
+                            type: 'disabled'
+                        },
+                        // ✅ 限制 token 数量
+                        max_tokens: MAX_TOKENS,
+                        temperature: 1.0
+                    }
                 }
-            }
-        });
-        return result.toTextStreamResponse({
-            headers: {
-                'Content-Type': 'text/event-stream',
-                'Cache-Control': 'no-cache',
-                Connection: 'keep-alive'
-            }
-        });
+            });
+            
+            return result.toTextStreamResponse({
+                headers: {
+                    'Content-Type': 'text/event-stream',
+                    'Cache-Control': 'no-cache',
+                    'Connection': 'keep-alive',
+                    'X-Accel-Buffering': 'no'
+                }
+            });
+        } finally {
+            clearTimeout(timeoutId);
+        }
     } catch (error) {
         console.error('AI beautify failed:', error);
         const message = error instanceof Error ? error.message : '美化失败';

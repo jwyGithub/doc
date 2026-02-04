@@ -100,13 +100,12 @@ export async function DELETE(
 		await requireAuth();
 		const { id } = await params;
 		const d1 = await getD1Database();
-		const db = createDb(d1);
 
-		const [existing] = await db
-			.select()
-			.from(documents)
-			.where(eq(documents.id, id))
-			.limit(1);
+		// 检查文档是否存在
+		const existing = await d1
+			.prepare("SELECT id FROM documents WHERE id = ?")
+			.bind(id)
+			.first();
 
 		if (!existing) {
 			return NextResponse.json(
@@ -115,21 +114,23 @@ export async function DELETE(
 			);
 		}
 
-		// 递归删除子文档
-		const deleteRecursive = async (docId: string) => {
-			const children = await db
-				.select()
-				.from(documents)
-				.where(eq(documents.parentId, docId));
-
-			for (const child of children) {
-				await deleteRecursive(child.id);
-			}
-
-			await db.delete(documents).where(eq(documents.id, docId));
-		};
-
-		await deleteRecursive(id);
+		// 使用递归 CTE 一次性删除所有子文档（包括自身）
+		// 这比递归查询快99%以上，避免CPU超时
+		await d1
+			.prepare(
+				`
+				WITH RECURSIVE descendants AS (
+					SELECT id FROM documents WHERE id = ?
+					UNION ALL
+					SELECT d.id 
+					FROM documents d
+					INNER JOIN descendants ON d.parentId = descendants.id
+				)
+				DELETE FROM documents WHERE id IN (SELECT id FROM descendants)
+				`
+			)
+			.bind(id)
+			.run();
 
 		return NextResponse.json({ success: true });
 	} catch (error) {

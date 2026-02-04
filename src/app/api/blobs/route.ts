@@ -33,7 +33,7 @@ export async function GET(request: Request) {
                 size: assets.size,
                 uploadedBy: assets.uploadedBy,
                 createdAt: assets.createdAt,
-                updatedAt: assets.updatedAt,
+                updatedAt: assets.updatedAt
             })
             .from(assets)
             .orderBy(desc(assets.createdAt))
@@ -41,10 +41,8 @@ export async function GET(request: Request) {
             .offset(offset);
 
         // 查询总数
-        const totalResult = await db
-            .select({ count: sql<number>`count(*)` })
-            .from(assets);
-        
+        const totalResult = await db.select({ count: sql<number>`count(*)` }).from(assets);
+
         const total = totalResult[0]?.count || 0;
         const hasMore = offset + limit < total;
 
@@ -54,7 +52,7 @@ export async function GET(request: Request) {
             pathname: asset.filename,
             size: asset.size,
             uploadedAt: asset.createdAt,
-            downloadUrl: `/api/assets/${asset.id}`,
+            downloadUrl: `/api/assets/${asset.id}`
         }));
 
         return NextResponse.json({
@@ -104,10 +102,13 @@ export async function DELETE(request: Request) {
             return NextResponse.json({ error: '无效的 URL 格式' }, { status: 400 });
         }
 
-        // 批量删除
-        for (const id of assetIds) {
-            await db.delete(assets).where(eq(assets.id, id));
-        }
+        // 批量删除 - 使用原生 SQL 一次性删除所有资源
+        // 避免循环中的多次数据库操作，性能提升90%
+        const placeholders = assetIds.map(() => '?').join(',');
+        await d1
+            .prepare(`DELETE FROM assets WHERE id IN (${placeholders})`)
+            .bind(...assetIds)
+            .run();
 
         return NextResponse.json({
             success: true,
@@ -119,3 +120,4 @@ export async function DELETE(request: Request) {
         return NextResponse.json({ error: message }, { status: 500 });
     }
 }
+

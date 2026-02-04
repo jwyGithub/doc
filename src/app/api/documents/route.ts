@@ -1,21 +1,51 @@
-import { eq, asc } from "drizzle-orm";
+import { eq, asc, sql } from "drizzle-orm";
 import { createDb, documents } from "@/db";
 import { getD1Database } from "@/lib/cloudflare";
 import { requireAuth } from "@/lib/session";
 import { NextResponse } from "next/server";
 
-export async function GET() {
+export async function GET(request: Request) {
 	try {
 		await requireAuth();
 		const d1 = await getD1Database();
 		const db = createDb(d1);
 
+		// 获取分页参数
+		const { searchParams } = new URL(request.url);
+		const limit = Number(searchParams.get('limit')) || 1000; // 默认1000，兼容现有行为
+		const offset = Number(searchParams.get('offset')) || 0;
+		const noPagination = searchParams.get('all') === 'true'; // 支持查询所有文档
+
+		if (noPagination) {
+			// 保持向后兼容：允许查询所有文档
+			const allDocuments = await db
+				.select()
+				.from(documents)
+				.orderBy(asc(documents.order), asc(documents.createdAt));
+
+			return NextResponse.json({ documents: allDocuments });
+		}
+
+		// 分页查询文档
 		const allDocuments = await db
 			.select()
 			.from(documents)
-			.orderBy(asc(documents.order), asc(documents.createdAt));
+			.orderBy(asc(documents.order), asc(documents.createdAt))
+			.limit(limit)
+			.offset(offset);
 
-		return NextResponse.json({ documents: allDocuments });
+		// 查询总数（用于分页）
+		const [{ count }] = await db
+			.select({ count: sql<number>`count(*)` })
+			.from(documents);
+
+		return NextResponse.json({ 
+			documents: allDocuments,
+			total: count,
+			hasMore: offset + limit < count,
+			limit,
+			offset
+		});
 	} catch (error) {
 		const message =
 			error instanceof Error ? error.message : "Failed to fetch documents";

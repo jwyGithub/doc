@@ -4,6 +4,7 @@ import { eq } from 'drizzle-orm';
 import { createOpenAI } from '@ai-sdk/openai';
 import { streamText } from 'ai';
 import { AI_CONFIG_KEY } from '@/constants';
+import { requireAuth } from '@/lib/session';
 
 interface AIConfigData {
     apiKey: string;
@@ -25,8 +26,12 @@ interface ChatRequestBody {
 
 export async function POST(request: Request) {
     try {
+        // ✅ 添加权限验证，保护 API 不被未授权访问
+        await requireAuth();
+
         const { messages, systemPrompt, model } = (await request.json()) as ChatRequestBody;
 
+        // ✅ 验证请求参数
         if (!messages || messages.length === 0) {
             return new Response(JSON.stringify({ error: '缺少消息内容' }), {
                 status: 400,
@@ -90,7 +95,6 @@ export async function POST(request: Request) {
                     thinking: {
                         type: 'disabled'
                     },
-                    max_tokens: 65536,
                     temperature: 1.0
                 }
             }
@@ -100,7 +104,8 @@ export async function POST(request: Request) {
             headers: {
                 'Content-Type': 'text/event-stream',
                 'Cache-Control': 'no-cache',
-                Connection: 'keep-alive'
+                Connection: 'keep-alive',
+                'X-Accel-Buffering': 'no' // 禁用反向代理缓冲
             }
         });
     } catch (error) {

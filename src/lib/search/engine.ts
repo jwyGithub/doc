@@ -44,7 +44,7 @@ function createSearchEngine(): MiniSearch<DocumentRecord> {
 			prefix: true, // 支持前缀搜索
 			fuzzy: 0.2, // 模糊搜索容差
 		},
-		// 自定义分词器，支持中文
+		// 自定义分词器，支持中文（优化版本，避免CPU超时）
 		tokenize: (text) => {
 			// 按空格、标点符号分词，同时保留连续的中文字符
 			const tokens: string[] = [];
@@ -56,12 +56,22 @@ function createSearchEngine(): MiniSearch<DocumentRecord> {
 				tokens.push(token);
 				
 				// 对于包含中文的文本，进行字符级别的索引（支持任意位置匹配）
-				if (/[\u4e00-\u9fa5]/.test(token)) {
-					// 生成 bigram 和 trigram 以支持更好的中文搜索
-					for (let i = 0; i < token.length - 1; i++) {
+				// 优化：限制长度和生成数量，避免CPU超时
+				if (/[\u4e00-\u9fa5]/.test(token) && token.length <= 50) {
+					// 只对长度 <= 50 的 token 生成 n-gram
+					// 限制最多生成 30 个 n-gram，避免过度索引
+					const maxNgrams = 30;
+					let ngramCount = 0;
+					
+					// 生成 bigram 以支持更好的中文搜索
+					for (let i = 0; i < token.length - 1 && ngramCount < maxNgrams; i++) {
 						tokens.push(token.slice(i, i + 2)); // bigram
-						if (i < token.length - 2) {
+						ngramCount++;
+						
+						// 只对前 20 个字符生成 trigram
+						if (i < Math.min(20, token.length - 2) && ngramCount < maxNgrams) {
 							tokens.push(token.slice(i, i + 3)); // trigram
+							ngramCount++;
 						}
 					}
 				}
