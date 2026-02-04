@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef, useEffect, lazy, Suspense } from 'react';
+import { useState, useCallback, useRef, useEffect, Suspense } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -8,8 +8,7 @@ import { Loader2, Sparkles, Copy, Check, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { XStream } from '@janone/xstream';
 
-// 延迟加载 Markdown 渲染器
-const MarkdownRenderer = lazy(() => import('./markdown-renderer').then(mod => ({ default: mod.MarkdownRenderer })));
+import { MarkdownRenderer } from '@/components/lazy';
 
 interface AIBeautifyDialogProps {
     open: boolean;

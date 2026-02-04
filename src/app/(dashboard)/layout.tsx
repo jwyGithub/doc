@@ -1,10 +1,10 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/session";
 import { isSystemInitialized } from "@/lib/setup";
-import { AppSidebar } from "@/components/app-sidebar";
+import { AppSidebar } from "@/components/layout/app-sidebar";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { Toaster } from "@/components/ui/sonner";
-import { SearchCommand } from "@/components/search-command";
+import { SearchCommand } from "@/components/features/search/search-command";
 
 export default async function DashboardLayout({
 	children,

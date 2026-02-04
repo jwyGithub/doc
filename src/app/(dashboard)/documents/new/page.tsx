@@ -1,47 +1,41 @@
-"use client";
+'use client';
 
-import { useState, useEffect, useCallback, useRef, lazy, Suspense } from "react";
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { SidebarTrigger } from "@/components/ui/sidebar";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { ArrowLeft, Save, Loader2, Edit, Eye, Sparkles, Columns2, PanelLeft, PanelRight } from "lucide-react";
-import { toast } from "sonner";
-import { triggerDocumentsRefresh } from "@/hooks/use-documents";
-import { useImagePaste } from "@/hooks/use-image-paste";
-import { onDocumentCreated } from "@/lib/search";
-import type { Document } from "@/db/schema";
+import { useState, useEffect, useCallback, useRef, Suspense } from 'react';
+import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { SidebarTrigger } from '@/components/ui/sidebar';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { ArrowLeft, Save, Edit, Eye, Sparkles, Columns2, PanelLeft, PanelRight } from 'lucide-react';
+import { toast } from 'sonner';
+import { triggerDocumentsRefresh } from '@/hooks/use-documents';
+import { useImagePaste } from '@/hooks/use-image-paste';
+import { onDocumentCreated } from '@/lib/search';
+import { documentService } from '@/services';
+import { SubmitButton } from '@/components/common/submit-button';
+import type { Document } from '@/db/schema';
+import type { ViewMode } from '@/types';
 
-// 延迟加载重型组件
-const MarkdownRenderer = lazy(() => import("@/components/markdown-renderer").then(mod => ({ default: mod.MarkdownRenderer })));
-const AIBeautifyDialog = lazy(() => import("@/components/ai-beautify-dialog").then(mod => ({ default: mod.AIBeautifyDialog })));
+import { MarkdownRenderer, AIBeautifyDialog } from '@/components/lazy';
 
 export default function NewDocumentPage() {
 	const router = useRouter();
-	const [title, setTitle] = useState("");
-	const [content, setContent] = useState("");
-	const [parentId, setParentId] = useState<string>("");
+	const [title, setTitle] = useState('');
+	const [content, setContent] = useState('');
+	const [parentId, setParentId] = useState<string>('');
 	const [documents, setDocuments] = useState<Document[]>([]);
 	const [isLoading, setIsLoading] = useState(false);
 	const [showAIBeautify, setShowAIBeautify] = useState(false);
-	const [viewMode, setViewMode] = useState<"split" | "edit" | "preview">("split");
+	const [viewMode, setViewMode] = useState<ViewMode>('split');
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
 
 	useEffect(() => {
 		const fetchDocuments = async () => {
 			try {
-				const res = await fetch("/api/documents");
-				const data = (await res.json()) as { documents?: Document[] };
+				const data = await documentService.getAll();
 				setDocuments(data.documents || []);
 			} catch (error) {
 				console.error(error);
@@ -50,7 +44,6 @@ export default function NewDocumentPage() {
 		fetchDocuments();
 	}, []);
 
-	// 在光标位置插入图片
 	const insertImageAtCursor = useCallback(
 		(imageMarkdown: string) => {
 			const textarea = textareaRef.current;
@@ -62,7 +55,6 @@ export default function NewDocumentPage() {
 
 			setContent(newContent);
 
-			// 设置光标位置到插入内容之后
 			setTimeout(() => {
 				textarea.focus();
 				const newPosition = start + imageMarkdown.length;
@@ -72,50 +64,39 @@ export default function NewDocumentPage() {
 		[content]
 	);
 
-	// 使用图片粘贴 hook
 	const { handlePaste } = useImagePaste({
 		onImageInsert: insertImageAtCursor,
-		disabled: isLoading
+		disabled: isLoading,
 	});
 
 	const handleSubmit = async () => {
 		if (!title.trim()) {
-			toast.error("请输入文档标题");
+			toast.error('请输入文档标题');
 			return;
 		}
 
 		setIsLoading(true);
 
 		try {
-			const res = await fetch("/api/documents", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					title,
-					content,
-					parentId: parentId || null,
-				}),
+			const data = await documentService.create({
+				title,
+				content,
+				parentId: parentId || undefined,
 			});
 
-			if (!res.ok) {
-				throw new Error("创建失败");
-			}
-
-			const { document } = (await res.json()) as { document: Document };
-			toast.success("文档创建成功");
+			toast.success('文档创建成功');
 			triggerDocumentsRefresh();
-			// 更新搜索索引
 			onDocumentCreated({
-				id: document.id,
-				title: document.title,
-				content: document.content || "",
-				parentId: document.parentId,
-				createdAt: String(document.createdAt),
-				updatedAt: String(document.updatedAt),
+				id: data.document.id,
+				title: data.document.title,
+				content: data.document.content || '',
+				parentId: data.document.parentId,
+				createdAt: String(data.document.createdAt),
+				updatedAt: String(data.document.updatedAt),
 			});
-			router.push(`/documents/${document.id}`);
+			router.push(`/documents/${data.document.id}`);
 		} catch {
-			toast.error("创建文档失败，请重试");
+			toast.error('创建文档失败，请重试');
 		} finally {
 			setIsLoading(false);
 		}
@@ -125,28 +106,15 @@ export default function NewDocumentPage() {
 		<div className="flex flex-col h-full">
 			<header className="flex h-14 items-center gap-4 border-b px-6 shrink-0">
 				<SidebarTrigger />
-				<Button
-					variant="ghost"
-					size="icon"
-					onClick={() => router.back()}
-				>
+				<Button variant="ghost" size="icon" onClick={() => router.back()}>
 					<ArrowLeft className="h-4 w-4" />
 				</Button>
 				<h1 className="font-semibold">新建文档</h1>
 				<div className="ml-auto flex gap-2">
-					<Button type="button" onClick={handleSubmit} disabled={isLoading}>
-						{isLoading ? (
-							<>
-								<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-								创建中...
-							</>
-						) : (
-							<>
-								<Save className="mr-2 h-4 w-4" />
-								创建文档
-							</>
-						)}
-					</Button>
+					<SubmitButton onClick={handleSubmit} loading={isLoading} loadingText="创建中...">
+						<Save className="mr-2 h-4 w-4" />
+						创建文档
+					</SubmitButton>
 				</div>
 			</header>
 			<div className="flex-1 flex flex-col overflow-hidden">
@@ -154,17 +122,11 @@ export default function NewDocumentPage() {
 					<div className="flex gap-4 items-end">
 						<div className="flex-1 space-y-1">
 							<Label htmlFor="title">文档标题</Label>
-							<Input
-								id="title"
-								value={title}
-								onChange={(e) => setTitle(e.target.value)}
-								placeholder="请输入文档标题"
-								disabled={isLoading}
-							/>
+							<Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="请输入文档标题" disabled={isLoading} />
 						</div>
 						<div className="w-48 space-y-1">
 							<Label htmlFor="parent">父文档</Label>
-							<Select value={parentId || "none"} onValueChange={(v) => setParentId(v === "none" ? "" : v)}>
+							<Select value={parentId || 'none'} onValueChange={(v) => setParentId(v === 'none' ? '' : v)}>
 								<SelectTrigger>
 									<SelectValue placeholder="选择父文档" />
 								</SelectTrigger>
@@ -182,9 +144,8 @@ export default function NewDocumentPage() {
 				</div>
 
 				<div className="flex-1 min-h-0 flex overflow-hidden">
-					{/* 编辑区域 */}
-					{(viewMode === "split" || viewMode === "edit") && (
-						<div className={`flex flex-col min-w-0 ${viewMode === "split" ? "flex-1 border-r" : "flex-1"}`}>
+					{(viewMode === 'split' || viewMode === 'edit') && (
+						<div className={`flex flex-col min-w-0 ${viewMode === 'split' ? 'flex-1 border-r' : 'flex-1'}`}>
 							<div className="h-11 px-4 border-b bg-muted/30 shrink-0 flex items-center justify-between">
 								<div className="flex items-center gap-2 text-sm text-muted-foreground">
 									<Edit className="h-4 w-4" />
@@ -201,7 +162,7 @@ export default function NewDocumentPage() {
 										<Sparkles className="mr-1 h-3 w-3" />
 										AI 美化
 									</Button>
-									<ToggleGroup type="single" value={viewMode} onValueChange={(v) => v && setViewMode(v as typeof viewMode)} size="sm">
+									<ToggleGroup type="single" value={viewMode} onValueChange={(v) => v && setViewMode(v as ViewMode)} size="sm">
 										<ToggleGroupItem value="edit" aria-label="仅编辑" title="仅编辑">
 											<PanelLeft className="h-4 w-4" />
 										</ToggleGroupItem>
@@ -228,16 +189,15 @@ export default function NewDocumentPage() {
 						</div>
 					)}
 
-					{/* 预览区域 */}
-					{(viewMode === "split" || viewMode === "preview") && (
-						<div className={`flex flex-col min-w-0 overflow-hidden ${viewMode === "split" ? "flex-1" : "flex-1"}`}>
+					{(viewMode === 'split' || viewMode === 'preview') && (
+						<div className={`flex flex-col min-w-0 overflow-hidden ${viewMode === 'split' ? 'flex-1' : 'flex-1'}`}>
 							<div className="h-11 px-4 border-b bg-muted/30 shrink-0 flex items-center justify-between">
 								<div className="flex items-center gap-2 text-sm text-muted-foreground">
 									<Eye className="h-4 w-4" />
 									<span>预览</span>
 								</div>
-								{viewMode === "preview" && (
-									<ToggleGroup type="single" value={viewMode} onValueChange={(v) => v && setViewMode(v as typeof viewMode)} size="sm">
+								{viewMode === 'preview' && (
+									<ToggleGroup type="single" value={viewMode} onValueChange={(v) => v && setViewMode(v as ViewMode)} size="sm">
 										<ToggleGroupItem value="edit" aria-label="仅编辑" title="仅编辑">
 											<PanelLeft className="h-4 w-4" />
 										</ToggleGroupItem>
@@ -258,7 +218,7 @@ export default function NewDocumentPage() {
 										</Suspense>
 									) : (
 										<p className="text-muted-foreground text-center py-8">
-											{viewMode === "preview" ? "暂无内容，请切换到编辑模式输入内容" : "在左侧输入内容后，这里将实时显示预览"}
+											{viewMode === 'preview' ? '暂无内容，请切换到编辑模式输入内容' : '在左侧输入内容后，这里将实时显示预览'}
 										</p>
 									)}
 								</div>
@@ -270,12 +230,7 @@ export default function NewDocumentPage() {
 
 			{showAIBeautify && (
 				<Suspense fallback={null}>
-					<AIBeautifyDialog
-						open={showAIBeautify}
-						onOpenChange={setShowAIBeautify}
-						content={content}
-						onReplace={setContent}
-					/>
+					<AIBeautifyDialog open={showAIBeautify} onOpenChange={setShowAIBeautify} content={content} onReplace={setContent} />
 				</Suspense>
 			)}
 		</div>

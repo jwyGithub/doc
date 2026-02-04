@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { createDb, documents } from "@/db";
 import { getD1Database } from "@/lib/cloudflare";
 import { requireAuth } from "@/lib/session";
-import { DocumentViewer } from "@/components/document-viewer";
+import { DocumentViewer } from "@/components/features/document/document-viewer";
 
 interface Props {
 	params: Promise<{ id: string }>;

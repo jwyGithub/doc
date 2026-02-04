@@ -1,31 +1,22 @@
-"use client";
+'use client';
 
-import { useState, useEffect, useRef, useCallback, lazy, Suspense } from "react";
+import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import {
-	AlertDialog,
-	AlertDialogAction,
-	AlertDialogCancel,
-	AlertDialogContent,
-	AlertDialogDescription,
-	AlertDialogFooter,
-	AlertDialogHeader,
-	AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Edit, Trash2, Loader2, Download, Share2, Menu } from "lucide-react";
-import { ShareDialog } from "./share-dialog";
+import { Edit, Trash2, Loader2, Download, Share2, Menu } from 'lucide-react';
+import { ShareDialog } from "../../dialogs/share/share-dialog";
 import { TableOfContents } from "./table-of-contents";
-import { toast } from "sonner";
-import { triggerDocumentsRefresh } from "@/hooks/use-documents";
-import { onDocumentDeleted } from "@/lib/search";
-import { extractHeadings } from "@/lib/toc";
-import type { Document } from "@/db/schema";
+import { toast } from 'sonner';
+import { triggerDocumentsRefresh } from '@/hooks/use-documents';
+import { onDocumentDeleted } from '@/lib/search';
+import { extractHeadings } from '@/lib/toc';
+import { documentService } from '@/services';
+import { ConfirmDialog } from '../../common/confirm-dialog';
+import type { Document } from '@/db/schema';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
-// 延迟加载 Markdown 渲染器
-const MarkdownRenderer = lazy(() => import("./markdown-renderer").then(mod => ({ default: mod.MarkdownRenderer })));
+import { MarkdownRenderer } from '@/components/lazy';
 
 interface DocumentViewerProps {
 	document: Document;
@@ -181,13 +172,7 @@ export function DocumentViewer({ document: doc, highlight }: DocumentViewerProps
 	const handleDelete = async () => {
 		setIsDeleting(true);
 		try {
-			const res = await fetch(`/api/documents/${doc.id}`, {
-				method: "DELETE",
-			});
-
-			if (!res.ok) {
-				throw new Error("删除失败");
-			}
+			await documentService.delete(doc.id);
 
 			toast.success("文档已删除");
 			triggerDocumentsRefresh();
@@ -288,34 +273,16 @@ export function DocumentViewer({ document: doc, highlight }: DocumentViewerProps
 				</main>
 			</div>
 
-			<AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-				<AlertDialogContent>
-					<AlertDialogHeader>
-						<AlertDialogTitle>确认删除文档？</AlertDialogTitle>
-						<AlertDialogDescription>
-							此操作将永久删除文档 &ldquo;{doc.title}&rdquo;
-							及其所有子文档。此操作无法撤销。
-						</AlertDialogDescription>
-					</AlertDialogHeader>
-					<AlertDialogFooter>
-						<AlertDialogCancel disabled={isDeleting}>取消</AlertDialogCancel>
-						<AlertDialogAction
-							onClick={handleDelete}
-							disabled={isDeleting}
-							className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-						>
-							{isDeleting ? (
-								<>
-									<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-									删除中...
-								</>
-							) : (
-								"确认删除"
-							)}
-						</AlertDialogAction>
-					</AlertDialogFooter>
-				</AlertDialogContent>
-			</AlertDialog>
+			<ConfirmDialog
+				open={showDeleteDialog}
+				onOpenChange={setShowDeleteDialog}
+				title="确认删除文档？"
+				description={`此操作将永久删除文档 "${doc.title}" 及其所有子文档。此操作无法撤销。`}
+				confirmText="确认删除"
+				onConfirm={handleDelete}
+				variant="destructive"
+				loading={isDeleting}
+			/>
 
 			<ShareDialog
 				open={showShareDialog}

@@ -1,57 +1,49 @@
-"use client";
+'use client';
 
-import { useState, useEffect, useCallback, useRef, lazy, Suspense } from "react";
-import { useRouter, useParams } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { SidebarTrigger } from "@/components/ui/sidebar";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { ArrowLeft, Save, Loader2, Eye, Edit, Sparkles, Columns2, PanelLeft, PanelRight } from "lucide-react";
-import { toast } from "sonner";
-import { triggerDocumentsRefresh } from "@/hooks/use-documents";
-import { useImagePaste } from "@/hooks/use-image-paste";
-import { onDocumentUpdated } from "@/lib/search";
-import type { Document } from "@/db/schema";
+import { useState, useEffect, useCallback, useRef, Suspense } from 'react';
+import { useRouter, useParams } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { SidebarTrigger } from '@/components/ui/sidebar';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { ArrowLeft, Save, Loader2, Eye, Edit, Sparkles, Columns2, PanelLeft, PanelRight } from 'lucide-react';
+import { toast } from 'sonner';
+import { triggerDocumentsRefresh } from '@/hooks/use-documents';
+import { useImagePaste } from '@/hooks/use-image-paste';
+import { onDocumentUpdated } from '@/lib/search';
+import { documentService } from '@/services';
+import type { Document } from '@/db/schema';
+import type { ViewMode } from '@/types';
 
-// 延迟加载重型组件
-const MarkdownRenderer = lazy(() => import("@/components/markdown-renderer").then(mod => ({ default: mod.MarkdownRenderer })));
-const AIBeautifyDialog = lazy(() => import("@/components/ai-beautify-dialog").then(mod => ({ default: mod.AIBeautifyDialog })));
+import { MarkdownRenderer, AIBeautifyDialog } from '@/components/lazy';
 
 export default function EditDocumentPage() {
 	const router = useRouter();
 	const params = useParams();
 	const id = params.id as string;
 
-	const [title, setTitle] = useState("");
-	const [content, setContent] = useState("");
-	const [parentId, setParentId] = useState<string>("");
+	const [title, setTitle] = useState('');
+	const [content, setContent] = useState('');
+	const [parentId, setParentId] = useState<string>('');
 	const [documents, setDocuments] = useState<Document[]>([]);
 	const [isLoading, setIsLoading] = useState(false);
 	const [isFetching, setIsFetching] = useState(true);
 	const [showAIBeautify, setShowAIBeautify] = useState(false);
-	const [viewMode, setViewMode] = useState<"split" | "edit" | "preview">("split");
+	const [viewMode, setViewMode] = useState<ViewMode>('split');
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
 
 	const fetchDocument = useCallback(async () => {
 		try {
-			const res = await fetch(`/api/documents/${id}`);
-			if (!res.ok) throw new Error("Not found");
-			const { document } = (await res.json()) as { document: Document };
-			setTitle(document.title);
-			setContent(document.content || "");
-			setParentId(document.parentId || "");
+			const data = await documentService.getById(id);
+			setTitle(data.document.title);
+			setContent(data.document.content || '');
+			setParentId(data.document.parentId || '');
 		} catch {
-			toast.error("文档不存在");
-			router.push("/");
+			toast.error('文档不存在');
+			router.push('/');
 		} finally {
 			setIsFetching(false);
 		}
@@ -59,12 +51,8 @@ export default function EditDocumentPage() {
 
 	const fetchDocuments = useCallback(async () => {
 		try {
-			const res = await fetch("/api/documents");
-			const data = (await res.json()) as { documents?: Document[] };
-			// 过滤掉当前文档和其子文档
-			const filtered = (data.documents || []).filter(
-				(doc: Document) => doc.id !== id
-			);
+			const data = await documentService.getAll();
+			const filtered = (data.documents || []).filter((doc: Document) => doc.id !== id);
 			setDocuments(filtered);
 		} catch (error) {
 			console.error(error);
@@ -76,7 +64,6 @@ export default function EditDocumentPage() {
 		fetchDocuments();
 	}, [fetchDocument, fetchDocuments]);
 
-	// 在光标位置插入图片
 	const insertImageAtCursor = useCallback(
 		(imageMarkdown: string) => {
 			const textarea = textareaRef.current;
@@ -88,7 +75,6 @@ export default function EditDocumentPage() {
 
 			setContent(newContent);
 
-			// 设置光标位置到插入内容之后
 			setTimeout(() => {
 				textarea.focus();
 				const newPosition = start + imageMarkdown.length;
@@ -98,50 +84,39 @@ export default function EditDocumentPage() {
 		[content]
 	);
 
-	// 使用图片粘贴 hook
 	const { handlePaste } = useImagePaste({
 		onImageInsert: insertImageAtCursor,
-		disabled: isLoading
+		disabled: isLoading,
 	});
 
 	const handleSubmit = async () => {
 		if (!title.trim()) {
-			toast.error("请输入文档标题");
+			toast.error('请输入文档标题');
 			return;
 		}
 
 		setIsLoading(true);
 
 		try {
-			const res = await fetch(`/api/documents/${id}`, {
-				method: "PUT",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					title,
-					content,
-					parentId: parentId || null,
-				}),
+			const data = await documentService.update(id, {
+				title,
+				content,
+				parentId: parentId || null,
 			});
 
-			if (!res.ok) {
-				throw new Error("更新失败");
-			}
-
-			const { document } = (await res.json()) as { document: Document };
-			toast.success("文档已保存");
+			toast.success('文档已保存');
 			triggerDocumentsRefresh();
-			// 更新搜索索引
 			onDocumentUpdated({
-				id: document.id,
-				title: document.title,
-				content: document.content || "",
-				parentId: document.parentId,
-				createdAt: String(document.createdAt),
-				updatedAt: String(document.updatedAt),
+				id: data.document.id,
+				title: data.document.title,
+				content: data.document.content || '',
+				parentId: data.document.parentId,
+				createdAt: String(data.document.createdAt),
+				updatedAt: String(data.document.updatedAt),
 			});
 			router.push(`/documents/${id}`);
 		} catch {
-			toast.error("保存失败，请重试");
+			toast.error('保存失败，请重试');
 		} finally {
 			setIsLoading(false);
 		}
@@ -159,11 +134,7 @@ export default function EditDocumentPage() {
 		<div className="flex flex-col h-full">
 			<header className="flex h-14 items-center gap-4 border-b px-6 shrink-0">
 				<SidebarTrigger />
-				<Button
-					variant="ghost"
-					size="icon"
-					onClick={() => router.back()}
-				>
+				<Button variant="ghost" size="icon" onClick={() => router.back()}>
 					<ArrowLeft className="h-4 w-4" />
 				</Button>
 				<h1 className="font-semibold">编辑文档</h1>
@@ -198,7 +169,7 @@ export default function EditDocumentPage() {
 						</div>
 						<div className="w-48 space-y-1">
 							<Label htmlFor="parent">父文档</Label>
-							<Select value={parentId || "none"} onValueChange={(v) => setParentId(v === "none" ? "" : v)}>
+							<Select value={parentId || 'none'} onValueChange={(v) => setParentId(v === 'none' ? '' : v)}>
 								<SelectTrigger>
 									<SelectValue placeholder="选择父文档" />
 								</SelectTrigger>

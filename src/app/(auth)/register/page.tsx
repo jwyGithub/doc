@@ -1,57 +1,44 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { signUp } from "@/lib/auth-client";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardFooter,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
-import { FileText, Loader2 } from "lucide-react";
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { signUp } from '@/lib/auth-client';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { FileText, Loader2 } from 'lucide-react';
+import { useForm } from '@/hooks/use-form';
+import { useAsync } from '@/hooks/use-async';
+import { validatePassword, validatePasswordMatch } from '@/lib/password';
+import { settingsService } from '@/services';
+import { SubmitButton } from '@/components/common/submit-button';
+import { LoadingState } from '@/components/common/loading-state';
 
 export default function RegisterPage() {
 	const router = useRouter();
-	const [name, setName] = useState("");
-	const [email, setEmail] = useState("");
-	const [password, setPassword] = useState("");
-	const [confirmPassword, setConfirmPassword] = useState("");
-	const [error, setError] = useState("");
+	const form = useForm({ name: '', email: '', password: '', confirmPassword: '' });
+	const [error, setError] = useState('');
 	const [isLoading, setIsLoading] = useState(false);
-	const [isAllowed, setIsAllowed] = useState<boolean | null>(null);
 
-	useEffect(() => {
-		// 检查是否允许注册
-		const checkRegistration = async () => {
-			try {
-				const res = await fetch("/api/settings/registration");
-				const data = (await res.json()) as { allowed: boolean };
-				setIsAllowed(data.allowed);
-			} catch {
-				setIsAllowed(false);
-			}
-		};
-		checkRegistration();
-	}, []);
+	const { data: settings, loading: checkingAllowed } = useAsync(() => settingsService.getRegistration(), { immediate: true });
+
+	const isAllowed = settings?.allowRegistration ?? false;
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
-		setError("");
+		setError('');
 
-		if (password !== confirmPassword) {
-			setError("两次输入的密码不一致");
+		const passwordValidation = validatePasswordMatch(form.values.password, form.values.confirmPassword);
+		if (!passwordValidation.valid) {
+			setError(passwordValidation.message!);
 			return;
 		}
 
-		if (password.length < 8) {
-			setError("密码长度至少为8位");
+		const lengthValidation = validatePassword(form.values.password);
+		if (!lengthValidation.valid) {
+			setError(lengthValidation.message!);
 			return;
 		}
 
@@ -59,25 +46,25 @@ export default function RegisterPage() {
 
 		try {
 			const result = await signUp.email({
-				email,
-				password,
-				name,
+				email: form.values.email,
+				password: form.values.password,
+				name: form.values.name,
 			});
 
 			if (result.error) {
-				setError(result.error.message || "注册失败，请稍后重试");
+				setError(result.error.message || '注册失败，请稍后重试');
 			} else {
-				router.push("/");
+				router.push('/');
 				router.refresh();
 			}
 		} catch {
-			setError("注册失败，请稍后重试");
+			setError('注册失败，请稍后重试');
 		} finally {
 			setIsLoading(false);
 		}
 	};
 
-	if (isAllowed === null) {
+	if (checkingAllowed) {
 		return (
 			<div className="min-h-screen flex items-center justify-center">
 				<Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -96,9 +83,7 @@ export default function RegisterPage() {
 							</div>
 						</div>
 						<CardTitle className="text-2xl font-bold">注册已关闭</CardTitle>
-						<CardDescription>
-							管理员已关闭新用户注册功能
-						</CardDescription>
+						<CardDescription>管理员已关闭新用户注册功能</CardDescription>
 					</CardHeader>
 					<CardFooter className="flex justify-center">
 						<Link href="/login">
@@ -124,19 +109,15 @@ export default function RegisterPage() {
 				</CardHeader>
 				<form onSubmit={handleSubmit}>
 					<CardContent className="space-y-4">
-						{error && (
-							<div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md animate-in fade-in-50">
-								{error}
-							</div>
-						)}
+						{error && <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md animate-in fade-in-50">{error}</div>}
 						<div className="space-y-2">
 							<Label htmlFor="name">用户名</Label>
 							<Input
 								id="name"
 								type="text"
 								placeholder="请输入用户名"
-								value={name}
-								onChange={(e) => setName(e.target.value)}
+								value={form.values.name}
+								onChange={(e) => form.setValue('name', e.target.value)}
 								required
 								disabled={isLoading}
 							/>
@@ -147,8 +128,8 @@ export default function RegisterPage() {
 								id="email"
 								type="email"
 								placeholder="请输入邮箱"
-								value={email}
-								onChange={(e) => setEmail(e.target.value)}
+								value={form.values.email}
+								onChange={(e) => form.setValue('email', e.target.value)}
 								required
 								disabled={isLoading}
 							/>
@@ -159,8 +140,8 @@ export default function RegisterPage() {
 								id="password"
 								type="password"
 								placeholder="请输入密码（至少8位）"
-								value={password}
-								onChange={(e) => setPassword(e.target.value)}
+								value={form.values.password}
+								onChange={(e) => form.setValue('password', e.target.value)}
 								required
 								disabled={isLoading}
 							/>
@@ -171,30 +152,20 @@ export default function RegisterPage() {
 								id="confirmPassword"
 								type="password"
 								placeholder="请再次输入密码"
-								value={confirmPassword}
-								onChange={(e) => setConfirmPassword(e.target.value)}
+								value={form.values.confirmPassword}
+								onChange={(e) => form.setValue('confirmPassword', e.target.value)}
 								required
 								disabled={isLoading}
 							/>
 						</div>
 					</CardContent>
 					<CardFooter className="flex flex-col space-y-4 pt-6">
-						<Button type="submit" className="w-full" disabled={isLoading}>
-							{isLoading ? (
-								<>
-									<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-									注册中...
-								</>
-							) : (
-								"注册"
-							)}
-						</Button>
+						<SubmitButton type="submit" className="w-full" loading={isLoading} loadingText="注册中...">
+							注册
+						</SubmitButton>
 						<p className="text-sm text-center text-muted-foreground">
-							已有账户？{" "}
-							<Link
-								href="/login"
-								className="text-primary hover:underline font-medium"
-							>
+							已有账户？{' '}
+							<Link href="/login" className="text-primary hover:underline font-medium">
 								立即登录
 							</Link>
 						</p>

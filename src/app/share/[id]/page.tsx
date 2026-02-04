@@ -1,22 +1,15 @@
 'use client';
 
-import { useState, useEffect, useCallback, lazy, Suspense, use } from 'react';
+import { useState, useEffect, useCallback, Suspense, use } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileText, Lock, Loader2, AlertCircle, Clock } from 'lucide-react';
-import { ThemeToggle } from '@/components/theme-toggle';
-import { TableOfContents } from '@/components/table-of-contents';
+import { ThemeToggle } from '@/components/common/theme-toggle';
 import { extractHeadings } from '@/lib/toc';
 import { ScrollArea } from '@/components/ui/scroll-area';
-
-// 延迟加载 Markdown 渲染器
-const MarkdownRenderer = lazy(() =>
-    import('@/components/markdown-renderer').then(mod => ({
-        default: mod.MarkdownRenderer
-    }))
-);
+import { MarkdownRenderer, TableOfContents } from '@/components/lazy';
 
 interface ShareStatus {
 	id: string;

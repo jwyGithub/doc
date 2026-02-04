@@ -1,92 +1,71 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
-import { Loader2, Shield, CheckCircle2 } from "lucide-react";
-import { toast } from "sonner";
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Loader2, Shield, CheckCircle2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { useForm } from '@/hooks/use-form';
+import { useAsync } from '@/hooks/use-async';
+import { validatePassword, validatePasswordMatch } from '@/lib/password';
+import { setupService } from '@/services';
+import { SubmitButton } from '@/components/common/submit-button';
 
 export default function SetupPage() {
 	const router = useRouter();
-	const [email, setEmail] = useState("");
-	const [password, setPassword] = useState("");
-	const [confirmPassword, setConfirmPassword] = useState("");
-	const [name, setName] = useState("");
+	const form = useForm({ name: '', email: '', password: '', confirmPassword: '' });
 	const [isLoading, setIsLoading] = useState(false);
-	const [isChecking, setIsChecking] = useState(true);
-	const [isInitialized, setIsInitialized] = useState(false);
 
-	// 检查系统是否已初始化
+	const { data: status, loading: isChecking } = useAsync(() => setupService.getStatus(), { immediate: true });
+
+	const isInitialized = status?.initialized ?? false;
+
 	useEffect(() => {
-		const checkStatus = async () => {
-			try {
-				const res = await fetch("/api/setup/status");
-				const data = (await res.json()) as { initialized: boolean };
-				if (data.initialized) {
-					setIsInitialized(true);
-					// 已初始化，3秒后跳转到登录页
-					setTimeout(() => {
-						router.push("/login");
-					}, 3000);
-				}
-			} catch (error) {
-				console.error("Failed to check setup status:", error);
-			} finally {
-				setIsChecking(false);
-			}
-		};
-
-		checkStatus();
-	}, [router]);
+		if (isInitialized) {
+			setTimeout(() => {
+				router.push('/login');
+			}, 3000);
+		}
+	}, [isInitialized, router]);
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
 
-		if (!email || !password || !name) {
-			toast.error("请填写完整信息");
+		if (!form.values.email || !form.values.password || !form.values.name) {
+			toast.error('请填写完整信息');
 			return;
 		}
 
-		if (password !== confirmPassword) {
-			toast.error("两次输入的密码不一致");
+		const matchValidation = validatePasswordMatch(form.values.password, form.values.confirmPassword);
+		if (!matchValidation.valid) {
+			toast.error(matchValidation.message!);
 			return;
 		}
 
-		if (password.length < 8) {
-			toast.error("密码长度至少为8位");
+		const lengthValidation = validatePassword(form.values.password);
+		if (!lengthValidation.valid) {
+			toast.error(lengthValidation.message!);
 			return;
 		}
 
 		setIsLoading(true);
 
 		try {
-			const res = await fetch("/api/setup/init", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ email, password, name }),
+			await setupService.init({
+				email: form.values.email,
+				password: form.values.password,
+				name: form.values.name,
 			});
 
-			const data = (await res.json()) as { success?: boolean; error?: string };
-
-			if (!res.ok) {
-				throw new Error(data.error || "初始化失败");
-			}
-
-			toast.success("系统初始化成功！正在跳转到登录页...");
+			toast.success('系统初始化成功！正在跳转到登录页...');
 			setTimeout(() => {
-				router.push("/login");
+				router.push('/login');
 			}, 1500);
 		} catch (error) {
-			const message = error instanceof Error ? error.message : "初始化失败";
+			const message = error instanceof Error ? error.message : '初始化失败';
 			toast.error(message);
 		} finally {
 			setIsLoading(false);
@@ -113,9 +92,7 @@ export default function SetupPage() {
 							<CheckCircle2 className="h-6 w-6 text-green-600 dark:text-green-400" />
 						</div>
 						<CardTitle>系统已初始化</CardTitle>
-						<CardDescription>
-							超级管理员账号已存在，正在跳转到登录页面...
-						</CardDescription>
+						<CardDescription>超级管理员账号已存在，正在跳转到登录页面...</CardDescription>
 					</CardHeader>
 				</Card>
 			</div>
@@ -130,9 +107,7 @@ export default function SetupPage() {
 						<Shield className="h-6 w-6 text-primary" />
 					</div>
 					<CardTitle className="text-2xl">系统初始化</CardTitle>
-					<CardDescription>
-						首次使用请创建超级管理员账号
-					</CardDescription>
+					<CardDescription>首次使用请创建超级管理员账号</CardDescription>
 				</CardHeader>
 				<CardContent>
 					<form onSubmit={handleSubmit} className="space-y-4">
@@ -142,8 +117,8 @@ export default function SetupPage() {
 								id="name"
 								type="text"
 								placeholder="请输入名称"
-								value={name}
-								onChange={(e) => setName(e.target.value)}
+								value={form.values.name}
+								onChange={(e) => form.setValue('name', e.target.value)}
 								disabled={isLoading}
 								required
 							/>
@@ -154,8 +129,8 @@ export default function SetupPage() {
 								id="email"
 								type="email"
 								placeholder="admin@example.com"
-								value={email}
-								onChange={(e) => setEmail(e.target.value)}
+								value={form.values.email}
+								onChange={(e) => form.setValue('email', e.target.value)}
 								disabled={isLoading}
 								required
 							/>
@@ -166,8 +141,8 @@ export default function SetupPage() {
 								id="password"
 								type="password"
 								placeholder="至少8位字符"
-								value={password}
-								onChange={(e) => setPassword(e.target.value)}
+								value={form.values.password}
+								onChange={(e) => form.setValue('password', e.target.value)}
 								disabled={isLoading}
 								required
 							/>
@@ -178,26 +153,17 @@ export default function SetupPage() {
 								id="confirmPassword"
 								type="password"
 								placeholder="再次输入密码"
-								value={confirmPassword}
-								onChange={(e) => setConfirmPassword(e.target.value)}
+								value={form.values.confirmPassword}
+								onChange={(e) => form.setValue('confirmPassword', e.target.value)}
 								disabled={isLoading}
 								required
 							/>
 						</div>
-						<Button type="submit" className="w-full" disabled={isLoading}>
-							{isLoading ? (
-								<>
-									<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-									初始化中...
-								</>
-							) : (
-								"创建超级管理员"
-							)}
-						</Button>
+						<SubmitButton type="submit" className="w-full" loading={isLoading} loadingText="初始化中...">
+							创建超级管理员
+						</SubmitButton>
 					</form>
-					<p className="mt-4 text-center text-xs text-muted-foreground">
-						创建后可在系统设置中管理用户注册权限
-					</p>
+					<p className="mt-4 text-center text-xs text-muted-foreground">创建后可在系统设置中管理用户注册权限</p>
 				</CardContent>
 			</Card>
 		</div>

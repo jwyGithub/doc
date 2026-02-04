@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useState, lazy, Suspense } from "react";
-import { usePathname, useRouter } from "next/navigation";
-import Link from "next/link";
+import { Suspense } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import {
 	Sidebar,
 	SidebarContent,
@@ -14,16 +14,16 @@ import {
 	SidebarGroup,
 	SidebarGroupLabel,
 	SidebarGroupContent,
-} from "@/components/ui/sidebar";
+} from '@/components/ui/sidebar';
 import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
+} from '@/components/ui/dropdown-menu';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
 import {
 	FileText,
 	Users,
@@ -36,20 +36,21 @@ import {
 	Link2,
 	MessageSquare,
 	Database,
-} from "lucide-react";
-import { signOut } from "@/lib/auth-client";
-import type { User } from "@/db/schema";
-import { DocumentTree } from "./document-tree";
-import { ThemeToggle } from "./theme-toggle";
-import { UsersDialog } from "./users-dialog";
-import { SettingsDialog } from "./settings-dialog";
-import { SharesDialog } from "./shares-dialog";
-import { BlobManagerDialog } from "./blob-manager-dialog";
-
-// 延迟加载 AI 配置对话框
-const AIConfigDialog = lazy(() => import("./ai-config-dialog").then(mod => ({ default: mod.AIConfigDialog })));
-// 延迟加载 AI 对话框
-const AIChatDialog = lazy(() => import("./ai-chat-dialog").then(mod => ({ default: mod.AIChatDialog })));
+} from 'lucide-react';
+import { signOut } from '@/lib/auth-client';
+import { useDialog } from '@/hooks/use-dialog';
+import type { User } from '@/db/schema';
+import { ThemeToggle } from '../common/theme-toggle';
+import {
+	AIConfigDialog,
+	AIChatDialog,
+	UsersDialog,
+	SettingsDialog,
+	SharesDialog,
+	BlobManagerDialog,
+	DocumentTree,
+	SearchCommand,
+} from '@/components/lazy';
 
 interface AppSidebarProps {
 	user: User;
@@ -58,26 +59,28 @@ interface AppSidebarProps {
 export function AppSidebar({ user }: AppSidebarProps) {
 	const pathname = usePathname();
 	const router = useRouter();
-	const [showAIConfig, setShowAIConfig] = useState(false);
-	const [showAIChat, setShowAIChat] = useState(false);
-	const [showUsers, setShowUsers] = useState(false);
-	const [showSettings, setShowSettings] = useState(false);
-	const [showShares, setShowShares] = useState(false);
-	const [showBlobManager, setShowBlobManager] = useState(false);
-	const isAdmin = user.role === "admin" || user.role === "superadmin";
-	const isSuperAdmin = user.role === "superadmin";
+
+	const aiConfigDialog = useDialog('aiConfig');
+	const aiChatDialog = useDialog('aiChat');
+	const usersDialog = useDialog('users');
+	const settingsDialog = useDialog('settings');
+	const sharesDialog = useDialog('shares');
+	const blobManagerDialog = useDialog('blobManager');
+
+	const isAdmin = user.role === 'admin' || user.role === 'superadmin';
+	const isSuperAdmin = user.role === 'superadmin';
 
 	const handleSignOut = async () => {
 		await signOut();
-		router.push("/login");
+		router.push('/login');
 		router.refresh();
 	};
 
 	const getInitials = (name: string) => {
 		return name
-			.split(" ")
+			.split(' ')
 			.map((n) => n[0])
-			.join("")
+			.join('')
 			.toUpperCase()
 			.slice(0, 2);
 	};
@@ -126,48 +129,40 @@ export function AppSidebar({ user }: AppSidebarProps) {
 											{getInitials(user.name)}
 										</AvatarFallback>
 									</Avatar>
-									<span className="flex-1 text-left truncate">
-										{user.name}
-									</span>
+									<span className="flex-1 text-left truncate">{user.name}</span>
 									<ChevronUp className="h-4 w-4" />
 								</SidebarMenuButton>
 							</DropdownMenuTrigger>
-							<DropdownMenuContent
-								side="top"
-								align="start"
-								className="w-56"
-							>
+							<DropdownMenuContent side="top" align="start" className="w-56">
 								<div className="px-2 py-1.5">
 									<p className="text-sm font-medium">{user.name}</p>
-									<p className="text-xs text-muted-foreground">
-										{user.email}
-									</p>
+									<p className="text-xs text-muted-foreground">{user.email}</p>
 								</div>
 								<DropdownMenuSeparator />
-								<DropdownMenuItem onClick={() => setShowAIChat(true)}>
+								<DropdownMenuItem onClick={aiChatDialog.open}>
 									<MessageSquare className="mr-2 h-4 w-4" />
 									<span>AI 对话</span>
 								</DropdownMenuItem>
-								<DropdownMenuItem onClick={() => setShowAIConfig(true)}>
+								<DropdownMenuItem onClick={aiConfigDialog.open}>
 									<Sparkles className="mr-2 h-4 w-4" />
 									<span>AI 配置</span>
 								</DropdownMenuItem>
-							<DropdownMenuItem onClick={() => setShowShares(true)}>
-								<Link2 className="mr-2 h-4 w-4" />
-								<span>分享管理</span>
-							</DropdownMenuItem>
-							<DropdownMenuItem onClick={() => setShowBlobManager(true)}>
-								<Database className="mr-2 h-4 w-4" />
-								<span>Blob 管理</span>
-							</DropdownMenuItem>
-							{isAdmin && (
+								<DropdownMenuItem onClick={sharesDialog.open}>
+									<Link2 className="mr-2 h-4 w-4" />
+									<span>分享管理</span>
+								</DropdownMenuItem>
+								<DropdownMenuItem onClick={blobManagerDialog.open}>
+									<Database className="mr-2 h-4 w-4" />
+									<span>Blob 管理</span>
+								</DropdownMenuItem>
+								{isAdmin && (
 									<>
-										<DropdownMenuItem onClick={() => setShowUsers(true)}>
+										<DropdownMenuItem onClick={usersDialog.open}>
 											<Users className="mr-2 h-4 w-4" />
 											<span>用户管理</span>
 										</DropdownMenuItem>
 										{isSuperAdmin && (
-											<DropdownMenuItem onClick={() => setShowSettings(true)}>
+											<DropdownMenuItem onClick={settingsDialog.open}>
 												<Settings className="mr-2 h-4 w-4" />
 												<span>系统设置</span>
 											</DropdownMenuItem>
@@ -185,20 +180,36 @@ export function AppSidebar({ user }: AppSidebarProps) {
 				</SidebarMenu>
 			</SidebarFooter>
 
-		{showAIChat && (
-			<Suspense fallback={null}>
-				<AIChatDialog open={showAIChat} onOpenChange={setShowAIChat} />
-			</Suspense>
-		)}
-		{showAIConfig && (
-			<Suspense fallback={null}>
-				<AIConfigDialog open={showAIConfig} onOpenChange={setShowAIConfig} />
-			</Suspense>
-		)}
-		<UsersDialog open={showUsers} onOpenChange={setShowUsers} />
-		<SettingsDialog open={showSettings} onOpenChange={setShowSettings} />
-		<SharesDialog open={showShares} onOpenChange={setShowShares} />
-		<BlobManagerDialog open={showBlobManager} onOpenChange={setShowBlobManager} />
+			{aiChatDialog.isOpen && (
+				<Suspense fallback={null}>
+					<AIChatDialog open={aiChatDialog.isOpen} onOpenChange={aiChatDialog.setOpen} />
+				</Suspense>
+			)}
+			{aiConfigDialog.isOpen && (
+				<Suspense fallback={null}>
+					<AIConfigDialog open={aiConfigDialog.isOpen} onOpenChange={aiConfigDialog.setOpen} />
+				</Suspense>
+			)}
+			{usersDialog.isOpen && (
+				<Suspense fallback={null}>
+					<UsersDialog open={usersDialog.isOpen} onOpenChange={usersDialog.setOpen} />
+				</Suspense>
+			)}
+			{settingsDialog.isOpen && (
+				<Suspense fallback={null}>
+					<SettingsDialog open={settingsDialog.isOpen} onOpenChange={settingsDialog.setOpen} />
+				</Suspense>
+			)}
+			{sharesDialog.isOpen && (
+				<Suspense fallback={null}>
+					<SharesDialog open={sharesDialog.isOpen} onOpenChange={sharesDialog.setOpen} />
+				</Suspense>
+			)}
+			{blobManagerDialog.isOpen && (
+				<Suspense fallback={null}>
+					<BlobManagerDialog open={blobManagerDialog.isOpen} onOpenChange={blobManagerDialog.setOpen} />
+				</Suspense>
+			)}
 		</Sidebar>
 	);
 }

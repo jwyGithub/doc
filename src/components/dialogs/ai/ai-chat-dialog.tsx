@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, lazy, Suspense } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,8 +12,7 @@ import { Loader2, Send, Trash2, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { XStream } from '@janone/xstream';
 
-// 延迟加载 Markdown 渲染器
-const MarkdownRenderer = lazy(() => import('./markdown-renderer').then(mod => ({ default: mod.MarkdownRenderer })));
+import { MarkdownRenderer } from '@/components/lazy';
 
 interface AIChatDialogProps {
     open: boolean;
