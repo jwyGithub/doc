@@ -9,16 +9,11 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, Eye, EyeOff, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
+import { AIModelData } from '@/types';
 
 interface AIConfigDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-}
-
-interface ModelOption {
-    id: string;
-    name: string;
-    description: string;
 }
 
 interface AIConfig {
@@ -58,7 +53,7 @@ export function AIConfigDialog({ open, onOpenChange }: AIConfigDialogProps) {
     const [isSaving, setIsSaving] = useState(false);
     const [isLoadingConfig, setIsLoadingConfig] = useState(false);
     const [isLoadingModels, setIsLoadingModels] = useState(false);
-    const [models, setModels] = useState<ModelOption[]>([]);
+    const [models, setModels] = useState<AIModelData[]>([]);
     const [apiKeyConfigured, setApiKeyConfigured] = useState(false);
 
     // 从服务器加载配置
@@ -100,7 +95,7 @@ export function AIConfigDialog({ open, onOpenChange }: AIConfigDialogProps) {
                 body: JSON.stringify({ apiKey: newApiKey })
             });
 
-            const data = (await res.json()) as { models?: ModelOption[]; error?: string };
+            const data = (await res.json()) as { models?: AIModelData[]; error?: string };
 
             if (res.ok && data.models) {
                 setModels(data.models);
