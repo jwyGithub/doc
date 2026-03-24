@@ -19,19 +19,6 @@ interface TestRequestBody {
     model: string;
 }
 
-interface GeminiResponse {
-    candidates?: Array<{
-        content?: {
-            parts?: Array<{
-                text?: string;
-            }>;
-        };
-    }>;
-    error?: {
-        message?: string;
-    };
-}
-
 export async function POST(request: Request) {
     try {
         const body = (await request.json()) as TestRequestBody;

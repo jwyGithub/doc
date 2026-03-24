@@ -17,7 +17,8 @@
         "db:studio": "drizzle-kit studio"
     },
     "dependencies": {
-        "@ai-sdk/openai": "^3.0.19",
+        "@ai-sdk/openai": "^3.0.48",
+        "@ai-sdk/react": "^3.0.139",
         "@janone/xstream": "^0.0.1",
         "@opennextjs/cloudflare": "^1.16.0",
         "@radix-ui/react-alert-dialog": "^1.1.15",
@@ -37,7 +38,7 @@
         "@radix-ui/react-tooltip": "^1.2.8",
         "@radix-ui/react-visually-hidden": "^1.2.4",
         "@tailwindcss/typography": "^0.5.19",
-        "ai": "^6.0.50",
+        "ai": "^6.0.137",
         "better-auth": "^1.4.17",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",

@@ -17,19 +17,14 @@ interface BeautifyRequestBody {
     content: string;
 }
 
-// 配置常量
-const MAX_TOKENS = 4096;
 const REQUEST_TIMEOUT = 30000;
-const MAX_CONTENT_LENGTH = 20000;
 
 export async function POST(request: Request) {
     try {
-        // ✅ 添加权限验证
         await requireAuth();
-        
+
         const { content } = (await request.json()) as BeautifyRequestBody;
 
-        // ✅ 验证内容
         if (!content) {
             return new Response(JSON.stringify({ error: '缺少文档内容' }), {
                 status: 400,
@@ -37,15 +32,6 @@ export async function POST(request: Request) {
             });
         }
 
-        // ✅ 验证内容长度
-        if (content.length > MAX_CONTENT_LENGTH) {
-            return new Response(JSON.stringify({ error: '文档内容过长，请分段美化' }), {
-                status: 400,
-                headers: { 'Content-Type': 'application/json' }
-            });
-        }
-
-        // 从数据库获取 AI 配置
         const d1 = await getD1Database();
         const db = createDb(d1);
 
@@ -69,14 +55,9 @@ export async function POST(request: Request) {
 
         const openaiProvider = createOpenAI({
             apiKey: config.apiKey,
-            baseURL: config.baseUrl,
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${config.apiKey}`
-            }
+            baseURL: config.baseUrl
         });
 
-        // ✅ 添加超时控制
         const controller = new AbortController();
         const timeoutId = setTimeout(() => {
             controller.abort();
@@ -85,36 +66,18 @@ export async function POST(request: Request) {
 
         try {
             const result = streamText({
-                model: openaiProvider.chat(config.model),
-                messages: [
-                    {
-                        role: 'system',
-                        content: config.systemPrompt
-                    },
-                    {
-                        role: 'user',
-                        content: content
-                    }
-                ],
-                abortSignal: controller.signal,
-                providerOptions: {
-                    openai: {
-                        stream: true,
-                        thinking: {
-                            type: 'disabled'
-                        },
-                        // ✅ 限制 token 数量
-                        max_tokens: MAX_TOKENS,
-                        temperature: 1.0
-                    }
-                }
+                model: openaiProvider.responses(config.model),
+                system: config.systemPrompt,
+                messages: [{ role: 'user', content }],
+                temperature: 1.0,
+                abortSignal: controller.signal
             });
-            
+
             return result.toTextStreamResponse({
                 headers: {
                     'Content-Type': 'text/event-stream',
                     'Cache-Control': 'no-cache',
-                    'Connection': 'keep-alive',
+                    Connection: 'keep-alive',
                     'X-Accel-Buffering': 'no'
                 }
             });
