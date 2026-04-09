@@ -1,7 +1,7 @@
 import { createDb, settings } from '@/db';
 import { getD1Database } from '@/lib/cloudflare';
 import { eq } from 'drizzle-orm';
-import { createOpenAI } from '@ai-sdk/openai';
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import { generateText } from 'ai';
 import { AI_CONFIG_KEY } from '@/constants';
 import { NextResponse } from 'next/server';
@@ -40,12 +40,12 @@ export async function POST(request: Request) {
             }
         }
 
-        if (!apiKey || !model) {
+        if (!apiKey || !model || !baseUrl) {
             return NextResponse.json({ error: '缺少必要参数' }, { status: 400 });
         }
 
-        const openaiProvider = createOpenAI({
-            apiKey: apiKey,
+        const openaiProvider = createOpenAICompatible({
+            name: 'openai',
             baseURL: baseUrl,
             headers: {
                 'Content-Type': 'application/json',
@@ -54,7 +54,7 @@ export async function POST(request: Request) {
         });
 
         const result = await generateText({
-            model: openaiProvider.chat(model),
+            model: openaiProvider.chatModel(model),
             messages: [
                 {
                     role: 'user',

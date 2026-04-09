@@ -13,6 +13,17 @@ interface AIConfigData {
     systemPrompt: string;
 }
 
+const filterModels = (models: AIModelData[] = []) => {
+    const result = new Set<string>();
+    return models.reduce<AIModelData[]>((acc, model) => {
+        if (!result.has(model.id)) {
+            acc.push(model);
+            result.add(model.id);
+        }
+        return acc;
+    }, []);
+};
+
 export async function POST() {
     try {
         // ✅ 添加权限验证，保护 API 不被未授权访问
@@ -47,7 +58,7 @@ export async function POST() {
             }
         }).then(res => res.json());
 
-        return NextResponse.json({ models: res.data });
+        return NextResponse.json({ models: filterModels(res.data) });
     } catch (error) {
         return NextResponse.json({ error: '获取模型列表失败' }, { status: 500 });
     }

@@ -1,7 +1,7 @@
 import { createDb, settings } from '@/db';
 import { getD1Database } from '@/lib/cloudflare';
 import { eq } from 'drizzle-orm';
-import { createOpenAI } from '@ai-sdk/openai';
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import { streamText } from 'ai';
 import { AI_CONFIG_KEY } from '@/constants';
 import { requireAuth } from '@/lib/session';
@@ -53,9 +53,12 @@ export async function POST(request: Request) {
             });
         }
 
-        const openaiProvider = createOpenAI({
-            apiKey: config.apiKey,
-            baseURL: config.baseUrl
+        const openaiProvider = createOpenAICompatible({
+            name: 'openai',
+            baseURL: config.baseUrl,
+            headers: {
+                Authorization: `Bearer ${config.apiKey}`
+            }
         });
 
         const controller = new AbortController();
@@ -66,14 +69,14 @@ export async function POST(request: Request) {
 
         try {
             const result = streamText({
-                model: openaiProvider.responses(config.model),
+                model: openaiProvider.chatModel(config.model),
                 system: config.systemPrompt,
                 messages: [{ role: 'user', content }],
                 temperature: 1.0,
                 abortSignal: controller.signal
             });
 
-            return result.toTextStreamResponse({
+            return result.toUIMessageStreamResponse({
                 headers: {
                     'Content-Type': 'text/event-stream',
                     'Cache-Control': 'no-cache',

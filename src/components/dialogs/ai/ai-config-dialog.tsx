@@ -215,7 +215,7 @@ export function AIConfigDialog({ open, onOpenChange }: AIConfigDialogProps) {
     if (isLoadingConfig) {
         return (
             <Dialog open={open} onOpenChange={onOpenChange}>
-                <DialogContent className='!w-[600px] !max-w-[90vw] max-h-[80vh] flex items-center justify-center'>
+                <DialogContent className='w-[600px]! max-w-[90vw]! max-h-[80vh] flex items-center justify-center'>
                     <DialogHeader className='sr-only'>
                         <DialogTitle>AI 配置</DialogTitle>
                     </DialogHeader>
@@ -230,7 +230,7 @@ export function AIConfigDialog({ open, onOpenChange }: AIConfigDialogProps) {
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className='!w-[60vw] !max-w-[90vw] max-h-[80vh] !min-h-[60vh] flex flex-col'>
+            <DialogContent className='w-[60vw]! max-w-[90vw]! max-h-[80vh] min-h-[60vh]! flex flex-col'>
                 <DialogHeader>
                     <DialogTitle>AI 配置</DialogTitle>
                     <DialogDescription>配置 AI 服务参数</DialogDescription>
