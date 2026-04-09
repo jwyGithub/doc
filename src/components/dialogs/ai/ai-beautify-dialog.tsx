@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { XStream } from '@janone/xstream';
 
 import { MarkdownRenderer } from '@/components/lazy';
+import { safeParseJson } from '@/lib/utils';
 
 interface AIBeautifyDialogProps {
     open: boolean;
@@ -65,14 +66,9 @@ export function AIBeautifyDialog({ open, onOpenChange, content, onReplace }: AIB
             }
 
             let accumulated = '';
-            const stream = XStream<string>(
+            const stream = XStream<{ data: string }>(
                 {
-                    readableStream: response.body!,
-                    transformStream: new TransformStream({
-                        transform(chunk, controller) {
-                            controller.enqueue(chunk);
-                        }
-                    })
+                    readableStream: response.body!
                 },
                 controller.signal
             );
@@ -80,7 +76,10 @@ export function AIBeautifyDialog({ open, onOpenChange, content, onReplace }: AIB
             // 使用 requestAnimationFrame 批量更新，减少渲染次数
             let pendingUpdate = false;
             for await (const item of stream) {
-                accumulated += item;
+                const data = safeParseJson(item.data);
+                if (data.type === 'text-delta') {
+                    accumulated += data.delta;
+                }
                 if (!pendingUpdate) {
                     pendingUpdate = true;
                     requestAnimationFrame(() => {
@@ -164,7 +163,13 @@ export function AIBeautifyDialog({ open, onOpenChange, content, onReplace }: AIB
                     {beautifiedContent && (
                         <ScrollArea className='flex-1 border rounded-md overflow-auto'>
                             <div className='p-4'>
-                                <Suspense fallback={<div className='text-muted-foreground text-center py-4'><Loader2 className='h-6 w-6 animate-spin mx-auto' /></div>}>
+                                <Suspense
+                                    fallback={
+                                        <div className='text-muted-foreground text-center py-4'>
+                                            <Loader2 className='h-6 w-6 animate-spin mx-auto' />
+                                        </div>
+                                    }
+                                >
                                     <MarkdownRenderer content={beautifiedContent} />
                                 </Suspense>
                                 {isLoading && (
